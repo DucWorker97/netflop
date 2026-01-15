@@ -1,3 +1,4 @@
+Repo-specific rules override generic rules…
 ---
 trigger: always_on
 ---
