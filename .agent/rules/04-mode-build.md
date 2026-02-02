@@ -14,7 +14,7 @@ activation: model_decision
 1. Confirm scope & Acceptance Criteria
 2. Propose file/component structure
 3. Code in order: **Types â†’ Logic/Hooks â†’ UI â†’ Styles**
-4. Run checklist before delivery
+4. Run canonical DoD in `rules/netflop.md` and /verify workflow
 5. Explain complex logic
 
 ## Output Format
@@ -37,13 +37,6 @@ activation: model_decision
 ```
 
 
-## ---
-
-### ? Checklist:
-- [x] Type-safe (no any)
-- [x] Complete error handling
-- [x] No hardcoded values
-- [x] Comments for complex logic
 ```
 
 ## Principles

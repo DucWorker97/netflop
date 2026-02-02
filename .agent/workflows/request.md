@@ -37,7 +37,7 @@ Identify which of the 4 categories the request belongs to:
 1. Confirm scope & acceptance criteria
 2. Propose file/component structure
 3. Code in order: Types â†’ Logic/Hooks â†’ UI â†’ Styles
-4. Run checklist before delivery
+4. Run canonical DoD in `rules/netflop.md` and /verify workflow
 
 ### đŸ”§ DEBUG Mode
 
@@ -57,21 +57,9 @@ Identify which of the 4 categories the request belongs to:
 
 ## Step 3: Pre-Delivery Checklist
 
-**Code Quality:**
-- [ ] No `any` types
-- [ ] No hardcoded magic numbers/strings
-- [ ] Proper error handling
-- [ ] Clear variable/function naming
-
-**Structure:**
-- [ ] Correct folder structure
-- [ ] Consistent naming convention
-- [ ] Split files appropriately (< 200 lines/file)
-
-**UI/UX (if applicable):**
-- [ ] Follows Design System
-- [ ] Responsive, mobile-first
-- [ ] Loading/Error/Empty states
+- Follow canonical DoD in `rules/netflop.md`.
+- Run `/verify` workflow before delivery.
+- For UI work, use `/ui-audit` checklist as needed.
 
 ## ---
 

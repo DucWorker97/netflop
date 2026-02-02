@@ -2,11 +2,12 @@
 name: pre-delivery-checklist
 description: Pointer to the canonical pre-delivery checklist workflow.
 trigger: manual
-activation: always_on
+activation: manual
 ---
 
 # Pre-Delivery Checklist
 
-Moved to `/verify` workflow to reduce duplication.
+- Canonical DoD lives in `rules/netflop.md`.
+- Canonical checklist lives in `/verify` workflow.
 
 See: `.agent/workflows/verify.md`
