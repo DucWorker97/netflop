@@ -62,6 +62,9 @@ pnpm dev:core
 |--------|-------------|
 | `pnpm dev` | Start ALL services including ai-curator |
 | `pnpm dev:core` | Start core services (API, Worker, Admin, Web, Mobile) |
+| `pnpm dev:web` | Use `.env.web.local` profile then start core services |
+| `pnpm dev:mobile:emu` | Use `.env.mobile.emu` profile then start core services |
+| `pnpm dev:lan` | Use `.env.lan.local` profile then start core services |
 | `pnpm mobile:start` | Start Expo Metro bundler only |
 | `pnpm mobile:fix` | Fix Expo dependency mismatches |
 | `pnpm kill:ports` | Kill processes on ports 3000, 8081, 9000 |
@@ -70,22 +73,23 @@ pnpm dev:core
 
 ## Environment Configuration
 
-Netflop uses a **single root `.env`** file. The key variable is `DEV_PUBLIC_HOST`.
+Netflop uses a **single root `.env`** file. Use env profiles to generate it:
+`.env.web.local`, `.env.mobile.emu`, `.env.lan.local` (copied into `.env` by scripts).
 
 ### Running on Different Platforms
 
 | Platform | DEV_PUBLIC_HOST | Command |
 |----------|-----------------|---------|
-| **Web/Admin** | `localhost` | `pnpm dev:core` |
-| **Android Emulator** | `10.0.2.2` | `$env:DEV_PUBLIC_HOST="10.0.2.2"; pnpm dev:core` |
-| **Physical Device** | `192.168.x.x` | `$env:DEV_PUBLIC_HOST="<LAN_IP>"; pnpm dev:core` |
+| **Web/Admin** | `localhost` | `pnpm dev:web` |
+| **Android Emulator** | `10.0.2.2` | `pnpm dev:mobile:emu` |
+| **Physical Device** | `192.168.x.x` | `pnpm dev:lan` |
 
 **Host selection cheat-sheet:**
 - Emulator: `10.0.2.2`
 - Physical device: your LAN IP (e.g. `192.168.1.x`)
 - Web-only: `localhost` (or LAN IP if running web + mobile together)
 
-Switch consistently: update `DEV_PUBLIC_HOST` and keep all client-facing URLs (`S3_PRESIGN_BASE_URL`, `S3_PUBLIC_BASE_URL`, `EXPO_PUBLIC_*`, `NEXT_PUBLIC_*`) on the same host, then restart services.
+Switch consistently: edit the profile file, then run the matching `pnpm dev:*` script to copy it into `.env`.
 
 ### How It Works
 
