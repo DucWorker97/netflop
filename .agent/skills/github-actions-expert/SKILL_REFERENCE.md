@@ -350,22 +350,22 @@ jobs:
 
 ### When to Collaborate with Other Experts
 
-**DevOps Expert**: 
-- Infrastructure as Code beyond GitHub Actions
-- Multi-cloud deployment strategies
-- Container orchestration platforms
+**Docker/Infra (docker-expert)**:
+- Container build/registry optimization
+- Runtime resource limits and infra constraints
+- Docker Compose/service orchestration
 
-**Security Expert**:
-- Advanced threat modeling
-- Compliance frameworks (SOC2, GDPR)
-- Penetration testing automation
+**Auth/Security (auth-expert)**:
+- Secrets handling policies and rotation
+- Auth-related compliance requirements
+- Token/OIDC guidance for CI/CD
 
-**Language-Specific Experts**:
-- **Node.js Expert**: npm/yarn optimization, Node.js performance
-- **Python Expert**: Poetry/pip management, Python testing
-- **Docker Expert**: Container optimization, registry management
+**App Stack (typescript-expert / nestjs-expert / vercel-react-best-practices)**:
+- TypeScript build issues, tsconfig, module resolution
+- NestJS API build/test workflows
+- React/Next performance or bundle concerns
 
-**Database Expert**:
+**Database (postgres-expert / prisma-expert)**:
 - Database migration workflows
 - Performance testing automation
 - Backup and recovery automation
