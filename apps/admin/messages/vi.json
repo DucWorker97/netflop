@@ -1,0 +1,25 @@
+{
+    "Common": {
+        "dashboard": "Bảng điều khiển",
+        "movies": "Phim",
+        "save": "Lưu lại",
+        "cancel": "Hủy bỏ",
+        "upload": "Tải lên",
+        "language": "Ngôn ngữ",
+        "loading": "Đang xử lý...",
+        "error": "Đã xảy ra lỗi"
+    },
+    "Movies": {
+        "title": "Quản lý Phim",
+        "create": "Tạo phim mới",
+        "create_new": "Thêm phim mới",
+        "status_draft": "Bản nháp",
+        "status_published": "Đã đăng",
+        "form": {
+            "title": "Tên phim"
+        },
+        "actions": {
+            "create": "Tạo phim"
+        }
+    }
+}

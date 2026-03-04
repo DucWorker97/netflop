@@ -38,8 +38,24 @@ export interface Movie {
     movieStatus: 'draft' | 'published';
     encodeStatus: 'pending' | 'processing' | 'ready' | 'failed';
     playbackUrl: string | null;
+    tmdbId?: number | null;
+    voteAverage?: number | null;
+    voteCount?: number | null;
+    popularity?: number | null;
+    originalLanguage?: string | null;
+    trailerUrl?: string | null;
+    subtitleUrl?: string | null;
     genres: Genre[];
     actors?: Actor[];
+    createdAt: string;
+    updatedAt?: string;
+}
+
+export interface MovieReview {
+    id: string;
+    userName: string;
+    rating: number;
+    comment: string | null;
     createdAt: string;
 }
 
@@ -62,13 +78,16 @@ export function useGenres() {
 }
 
 // Movies
-export function useMovies(params: { page?: number; limit?: number; genreId?: string } = {}) {
-    const { page = 1, limit = 20, genreId } = params;
+export function useMovies(params: { page?: number; limit?: number; genreId?: string; q?: string; sort?: string; order?: string } = {}) {
+    const { page = 1, limit = 20, genreId, q, sort, order } = params;
     const queryParams = new URLSearchParams();
     queryParams.set('page', String(page));
     queryParams.set('limit', String(limit));
     queryParams.set('status', 'published'); // Only published movies
     if (genreId) queryParams.set('genreId', genreId);
+    if (q) queryParams.set('q', q);
+    if (sort) queryParams.set('sort', sort);
+    if (order) queryParams.set('order', order);
 
     return useQuery({
         queryKey: ['movies', params],
@@ -213,41 +232,54 @@ export function useMovieRatingStats(movieId: string) {
     });
 }
 
-export function useUserRating(movieId: string) {
+export function useUserRating(movieId: string, enabled = true) {
     return useQuery({
         queryKey: ['ratings', movieId, 'user'],
         queryFn: async () => {
             const res = await api.get<{ data: { rating: number } | null }>(`/api/ratings/${movieId}/user`);
             return res.data;
         },
+        enabled: !!movieId && enabled,
     });
 }
 
 export function useRateMovie() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ movieId, rating }: { movieId: string; rating: number }) => {
-            await api.post(`/api/ratings/${movieId}`, { rating });
+        mutationFn: async ({ movieId, rating, comment }: { movieId: string; rating: number; comment?: string }) => {
+            await api.post(`/api/ratings/${movieId}`, { rating, comment });
         },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['ratings', variables.movieId] });
+            queryClient.invalidateQueries({ queryKey: ['ratings', variables.movieId, 'list'] });
         },
     });
 }
 
-// Similar Movies (Mock)
+export function useMovieReviews(movieId: string, limit = 20) {
+    return useQuery({
+        queryKey: ['ratings', movieId, 'list', limit],
+        queryFn: async () => {
+            const res = await api.get<{ data: MovieReview[] }>(`/api/ratings/${movieId}/list?limit=${limit}`);
+            return res.data;
+        },
+        enabled: !!movieId,
+    });
+}
+
+// Similar Movies (AI-powered content-based similarity)
 export function useSimilarMovies(movieId: string) {
     return useQuery({
         queryKey: ['movies', movieId, 'similar'],
         queryFn: async () => {
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 800));
-            // Return mock data (random subset of recent movies logic or just static)
-            // In real app, this calls /api/movies/:id/similar
-            const res = await api.get<{ data: Movie[] }>('/api/movies?limit=10&sort=createdAt&order=desc');
-            return res.data.slice(0, 8); // Return 8 movies
+            const res = await api.get<{ source: string; items: Movie[] }>(
+                `/api/recommendations/similar/${movieId}?limit=8`,
+            );
+            return res.items;
         },
         enabled: !!movieId,
+        retry: false,
+        staleTime: 5 * 60 * 1000, // 5 minutes
     });
 }
 

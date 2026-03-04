@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+MinIO CORS Configuration for Netflop
+Apply with: mc cors set local/netflop-media ./minio-cors.xml
+View with: mc cors get local/netflop-media
+-->
+<CORSConfiguration>
+  <CORSRule>
+    <AllowedOrigin>http://localhost:3001</AllowedOrigin>
+    <AllowedOrigin>http://localhost:3002</AllowedOrigin>
+    <AllowedOrigin>http://localhost:8081</AllowedOrigin>
+    <AllowedOrigin>http://localhost:19006</AllowedOrigin>
+    <!-- Add your LAN IP origins here -->
+    <AllowedOrigin>http://192.168.1.*:3001</AllowedOrigin>
+    <AllowedOrigin>http://192.168.1.*:3002</AllowedOrigin>
+    <AllowedOrigin>http://192.168.1.*:8081</AllowedOrigin>
+    <AllowedOrigin>http://10.0.2.2:*</AllowedOrigin>
+    <AllowedMethod>GET</AllowedMethod>
+    <AllowedMethod>PUT</AllowedMethod>
+    <AllowedMethod>POST</AllowedMethod>
+    <AllowedMethod>DELETE</AllowedMethod>
+    <AllowedMethod>HEAD</AllowedMethod>
+    <AllowedHeader>*</AllowedHeader>
+    <ExposeHeader>ETag</ExposeHeader>
+    <ExposeHeader>x-amz-meta-*</ExposeHeader>
+    <MaxAgeSeconds>3600</MaxAgeSeconds>
+  </CORSRule>
+</CORSConfiguration>

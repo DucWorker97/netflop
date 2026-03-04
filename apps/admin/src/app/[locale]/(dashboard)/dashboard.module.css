@@ -1,0 +1,129 @@
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 240px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+}
+
+.logo {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.logoText {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--accent);
+}
+
+.logoSubtext {
+    margin-left: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.nav {
+    flex: 1;
+    padding: 1rem;
+}
+
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.navItem:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.navItemActive {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.sidebarFooter {
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.userInfo {
+    margin-bottom: 0.75rem;
+}
+
+.userEmail {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.userRole {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: capitalize;
+}
+
+.logoutBtn {
+    width: 100%;
+    padding: 0.5rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.logoutBtn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.main {
+    flex: 1;
+    margin-left: 240px;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.loadingContainer {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

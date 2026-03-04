@@ -1,0 +1,172 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 2rem;
+}
+
+.modal {
+    background: #1a1a1a;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 400px;
+    overflow: hidden;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #333;
+}
+
+.header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.closeBtn {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 2rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.closeBtn:hover {
+    color: #fff;
+}
+
+/* Preview */
+.preview {
+    display: flex;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    background: #141414;
+    border-bottom: 1px solid #333;
+}
+
+.poster {
+    width: 60px;
+    height: 90px;
+    background: #333;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.poster img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.movieInfo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.movieInfo h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.url {
+    color: #666;
+    font-size: 0.75rem;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Options */
+.options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    padding: 1.25rem 1.5rem;
+}
+
+.optionBtn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: #2a2a2a;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.optionBtn:hover {
+    background: #3a3a3a;
+    transform: scale(1.05);
+}
+
+.optionIcon {
+    font-size: 1.5rem;
+}
+
+.optionName {
+    color: #ccc;
+    font-size: 0.75rem;
+}
+
+/* QR Section */
+.qrSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem;
+    background: #141414;
+    border-top: 1px solid #333;
+}
+
+.qrCode {
+    width: 120px;
+    height: 120px;
+    background: #fff;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    color: #111;
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 0.25rem;
+}
+
+.qrCode img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.qrSection p {
+    color: #888;
+    font-size: 0.75rem;
+    margin: 0;
+}
+

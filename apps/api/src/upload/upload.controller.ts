@@ -27,18 +27,23 @@ export class UploadController {
 
     @Get('presigned-url')
     async getPresignedUrl(
+        @Req() req: Request,
         @Query('movieId', ParseUUIDPipe) movieId: string,
         @Query('fileName') fileName: string,
         @Query('contentType') contentType: string,
         @Query('sizeBytes') sizeBytes: string,
         @Query('fileType') fileType?: string,
     ) {
+        const originHeader = Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin;
+        const refererHeader = Array.isArray(req.headers.referer) ? req.headers.referer[0] : req.headers.referer;
+
         const result = await this.uploadService.getPresignedUrl({
             movieId,
             fileName,
             contentType,
             sizeBytes: parseInt(sizeBytes, 10),
             fileType: (fileType as 'video' | 'thumbnail') || 'video',
+            origin: originHeader ?? refererHeader,
         });
 
         return { data: result };
@@ -74,12 +79,17 @@ export class UploadController {
 
     @Get('subtitle-presigned-url')
     async getSubtitlePresignedUrl(
+        @Req() req: Request,
         @Query('movieId', ParseUUIDPipe) movieId: string,
         @Query('fileName') fileName: string,
     ) {
+        const originHeader = Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin;
+        const refererHeader = Array.isArray(req.headers.referer) ? req.headers.referer[0] : req.headers.referer;
+
         const result = await this.uploadService.getSubtitlePresignedUrl({
             movieId,
             fileName,
+            origin: originHeader ?? refererHeader,
         });
 
         return { data: result };

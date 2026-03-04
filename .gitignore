@@ -32,6 +32,10 @@ next-env.d.ts
 .vscode
 *.swp
 *.swo
+.claude
+.codex
+.cursor
+.gemini
 
 # OS
 .DS_Store
@@ -45,6 +49,23 @@ apps/api/prisma/migrations/*.sql.bak
 
 # Test
 coverage
+
+# Agent state
+.agent/logs
+.agent/plans
+
+# Python
+.venv
+__pycache__
+*.pyc
+
+# Local artifacts
+artifacts
+apps/api/test_output*.txt
+push_log.txt
+seed_log*.txt
+temp_movie.txt
+tmp-*.bin
 
 # Docker volumes (local)
 postgres-data

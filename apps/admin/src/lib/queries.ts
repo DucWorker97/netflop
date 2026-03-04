@@ -19,8 +19,14 @@ interface Movie {
     movieStatus: 'draft' | 'published';
     encodeStatus: 'pending' | 'processing' | 'ready' | 'failed';
     genres: Genre[];
+    actors: { id: string; name: string; avatarUrl: string | null }[];
     createdAt: string;
     updatedAt: string;
+    videoUrl?: string | null;
+    subtitles?: {
+        language: string;
+        url: string;
+    }[];
 }
 
 interface PaginationMeta {
@@ -43,13 +49,16 @@ interface CreateMovieInput {
     title: string;
     description?: string;
     genreIds?: string[];
+    actors?: string[];
     releaseYear?: number;
+    durationSeconds?: number;
 }
 
 interface UpdateMovieInput {
     title?: string;
     description?: string;
     genreIds?: string[];
+    actors?: string[];
     releaseYear?: number;
     durationSeconds?: number;
 }

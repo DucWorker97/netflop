@@ -1,0 +1,122 @@
+.page {
+    min-height: 100vh;
+    background: var(--bg-primary);
+}
+
+.hero {
+    background: radial-gradient(circle at top left, rgba(229, 9, 20, 0.15), transparent 55%),
+        linear-gradient(135deg, #141414 0%, #0d0d0d 60%);
+    border-bottom: 1px solid var(--border);
+    padding: 3rem 0 2rem;
+}
+
+.heroContent {
+    max-width: var(--container-width);
+    margin: 0 auto;
+    padding: 0 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.title {
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    max-width: 640px;
+}
+
+.searchRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.searchInput {
+    flex: 1;
+    min-width: 240px;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.searchInput:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.clearButton {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.clearButton:hover {
+    color: var(--text-primary);
+    border-color: var(--accent);
+}
+
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 2rem 0 1.5rem;
+}
+
+.filterButton {
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.filterButton:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.filterActive {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.summary {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1.25rem;
+}
+
+.resultsHeader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.resultsTitle {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.emptyHint {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+

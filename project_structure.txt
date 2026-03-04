@@ -1,0 +1,65 @@
+NETFLOP PROJECT STRUCTURE & OVERVIEW
+
+1. SYSTEM ARCHITECTURE
+----------------------
+Type: Monorepo
+Manager: pnpm + Turborepo
+Database: PostgreSQL (Primary), Redis (Queue/Cache), ClickHouse (Analytics)
+Storage: MinIO (S3-compatible object storage)
+Orchestration: Docker Compose
+
+2. APPLICATIONS (apps/)
+-----------------------
+a) @netflop/api (NestJS)
+   - Role: Core Backend API
+   - Stack: NestJS, Prisma, Passport (JWT)
+   - Features: Auth, Movie Metadata, Streaming URLs, User Management
+   - Port: 3000
+
+b) @netflop/admin (Next.js)
+   - Role: Internal Admin Dashboard
+   - Stack: Next.js (App Router), TailwindCSS, React Query
+   - Features: Content Management (CMS), Analytics, User Oversight, Media Upload
+   - Port: 3001
+
+c) @netflop/web (Next.js)
+   - Role: End-User Streaming Frontend
+   - Stack: Next.js, Framer Motion, Video.js (or similar HLS player)
+   - Features: Browsing, Playback, Subscription, Reviews
+   - Port: 3002
+
+d) @netflop/mobile (Expo)
+   - Role: Mobile Application (iOS/Android)
+   - Stack: React Native, Expo, Expo Router
+   - Features: Mobile viewing experience
+   - Port: 8081 (Metro Bundler)
+
+e) @netflop/worker (Node.js)
+   - Role: Background Job Processor
+   - Stack: Node.js, BullMQ, FFmpeg
+   - Features: Video transcoding (HLS), File cleanup, Async tasks
+
+f) @netflop/ai-curator (Python)
+   - Role: AI/ML Service
+   - Stack: Python, FastAPI/Uvicorn
+   - Features: Recommendations, Content Analysis
+
+3. SHARED PACKAGES (packages/)
+------------------------------
+a) @netflop/shared
+   - Common utilities, types, and DTOs shared between frontend and backend.
+
+b) @netflop/tsconfig
+   - Base TypeScript configurations for consistency.
+
+4. INFRASTRUCTURE & SERVICES (docker-compose.yml)
+-------------------------------------------------
+- Postgres: Main relational database (Port 5432)
+- Redis: Job queues (BullMQ) and caching (Port 6379)
+- MinIO: S3-compatible storage for video/images (Ports 9000/9001)
+- ClickHouse: High-performance analytics (Port 8123/9009)
+
+5. KEY WORKFLOWS
+----------------
+- Video Pipeline: Upload -> Presigned URL (API) -> S3 (MinIO) -> Webhook -> Worker (FFmpeg Transcode) -> HLS Playlist -> CDN/Playback.
+- Authentication: JWT-based stateless auth.

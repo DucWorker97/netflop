@@ -1,0 +1,193 @@
+# ═══════════════════════════════════════════════════════════════
+# Netflop Staging Docker Compose
+# Runs entire stack on single machine for demo/testing
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  # ─────────────────────────────────────────────────────────────
+  # Infrastructure
+  # ─────────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: netflop-staging-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-netflop}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-netflop}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: netflop-staging-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: netflop-staging-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: [ "CMD", "mc", "ready", "local" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: netflop-staging-minio-init
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+        sleep 5;
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin};
+        mc mb -p local/${S3_BUCKET:-netflop-media} || true;
+        mc anonymous set download local/${S3_BUCKET:-netflop-media}/hls || true;
+        mc anonymous set download local/${S3_BUCKET:-netflop-media}/posters || true;
+        mc anonymous set download local/${S3_BUCKET:-netflop-media}/thumbnails || true;
+        mc anonymous set download local/${S3_BUCKET:-netflop-media}/subtitles || true;
+        echo 'MinIO bucket initialized';
+        exit 0;
+      "
+
+  # ─────────────────────────────────────────────────────────────
+  # Database Migration (runs once)
+  # ─────────────────────────────────────────────────────────────
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+      target: builder
+    container_name: netflop-staging-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-netflop}
+    working_dir: /app/apps/api
+    command: npx prisma migrate deploy
+    restart: "no"
+
+  # ─────────────────────────────────────────────────────────────
+  # Applications
+  # ─────────────────────────────────────────────────────────────
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    container_name: netflop-staging-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-netflop}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change_me_too}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-netflop-media}
+      S3_REGION: us-east-1
+      S3_PRESIGN_BASE_URL: ${S3_PRESIGN_BASE_URL:-http://localhost:9000}
+      S3_PUBLIC_BASE_URL: http://localhost:9000/${S3_BUCKET:-netflop-media}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:19006}
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health" ]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  worker:
+    build:
+      context: ..
+      dockerfile: apps/worker/Dockerfile
+    container_name: netflop-staging-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-netflop}
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-netflop-media}
+      S3_REGION: us-east-1
+    volumes:
+      - worker-temp:/tmp/netflop-worker
+
+  admin:
+    build:
+      context: ..
+      dockerfile: apps/admin/Dockerfile
+    container_name: netflop-staging-admin
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
+
+# ─────────────────────────────────────────────────────────────
+# Volumes
+# ─────────────────────────────────────────────────────────────
+
+volumes:
+  postgres-data:
+  minio-data:
+  worker-temp:

@@ -1,0 +1,27 @@
+<CORSConfiguration>
+    <CORSRule>
+        <AllowedOrigin>http://localhost:3000</AllowedOrigin>
+        <AllowedOrigin>http://localhost:3001</AllowedOrigin>
+        <AllowedOrigin>http://localhost:3002</AllowedOrigin>
+        <AllowedOrigin>http://localhost:8081</AllowedOrigin>
+        <AllowedOrigin>http://localhost:19006</AllowedOrigin>
+        <!-- Replace these with your actual LAN IP origins -->
+        <AllowedOrigin>http://192.168.1.100:3000</AllowedOrigin>
+        <AllowedOrigin>http://192.168.1.100:3001</AllowedOrigin>
+        <AllowedOrigin>http://192.168.1.100:3002</AllowedOrigin>
+        <AllowedOrigin>http://192.168.1.100:8081</AllowedOrigin>
+        <AllowedOrigin>http://192.168.1.100:19006</AllowedOrigin>
+        <!-- Mobile emulator loopback alias -->
+        <AllowedOrigin>http://10.0.2.2:3000</AllowedOrigin>
+        <AllowedOrigin>http://10.0.2.2:3001</AllowedOrigin>
+        <AllowedOrigin>http://10.0.2.2:3002</AllowedOrigin>
+        <AllowedOrigin>http://10.0.2.2:8081</AllowedOrigin>
+        
+        <AllowedMethod>GET</AllowedMethod>
+        <AllowedMethod>HEAD</AllowedMethod>
+        <AllowedMethod>PUT</AllowedMethod>
+        <AllowedHeader>*</AllowedHeader>
+        <ExposeHeader>ETag</ExposeHeader>
+        <MaxAgeSeconds>3600</MaxAgeSeconds>
+    </CORSRule>
+</CORSConfiguration>

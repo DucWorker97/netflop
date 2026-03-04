@@ -1,0 +1,25 @@
+{
+    "Common": {
+        "dashboard": "Dashboard",
+        "movies": "Movies",
+        "save": "Save",
+        "cancel": "Cancel",
+        "upload": "Upload",
+        "language": "Language",
+        "loading": "Processing...",
+        "error": "An error occurred"
+    },
+    "Movies": {
+        "title": "Movie Management",
+        "create": "Create New Movie",
+        "create_new": "Add New Movie",
+        "status_draft": "Draft",
+        "status_published": "Published",
+        "form": {
+            "title": "Movie Title"
+        },
+        "actions": {
+            "create": "Create Movie"
+        }
+    }
+}

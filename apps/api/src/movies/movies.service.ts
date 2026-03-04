@@ -1,10 +1,10 @@
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service'; // Kept as it's used
 import { MovieStatus, EncodeStatus, User, Prisma } from '@prisma/client';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
@@ -40,6 +40,44 @@ export class MoviesService {
     }
 
     async create(dto: CreateMovieDto) {
+        // 1. Check for duplicate title (case-insensitive)
+        const existingToken = await this.prisma.movie.findFirst({
+            where: {
+                title: {
+                    equals: dto.title,
+                    mode: 'insensitive',
+                },
+            },
+        });
+
+        if (existingToken) {
+            throw new ConflictException({
+                code: 'MOVIE_TITLE_EXISTS',
+                message: `Movie with title "${dto.title}" already exists`,
+            });
+        }
+
+        // 2. Handle Actors (Link existing or Create new)
+        let actorOperations: Prisma.MovieActorCreateNestedManyWithoutMovieInput | undefined;
+        if (dto.actors && dto.actors.length > 0) {
+            const actorIds = await this.resolveActorIds(dto.actors);
+            actorOperations = {
+                create: actorIds.map((actorId) => ({
+                    actor: { connect: { id: actorId } },
+                })),
+            };
+        }
+
+        // 3. Handle Genres
+        let genreOperations: Prisma.MovieGenreCreateNestedManyWithoutMovieInput | undefined;
+        if (dto.genreIds && dto.genreIds.length > 0) {
+            genreOperations = {
+                create: dto.genreIds.map((genreId) => ({
+                    genre: { connect: { id: genreId } },
+                })),
+            };
+        }
+
         return this.prisma.movie.create({
             data: {
                 title: dto.title,
@@ -51,10 +89,15 @@ export class MoviesService {
                 originalLanguage: dto.originalLanguage,
                 trailerUrl: dto.trailerUrl,
                 subtitleUrl: dto.subtitleUrl,
-                movieStatus: 'draft',
-                encodeStatus: 'pending',
-                // cast and genres logic omitted for brevity but required if validation is strict
-            }
+                movieStatus: MovieStatus.draft,
+                encodeStatus: EncodeStatus.pending,
+                actors: actorOperations,
+                genres: genreOperations,
+            },
+            include: {
+                genres: { include: { genre: true } },
+                actors: { include: { actor: true } },
+            },
         });
     }
 
@@ -65,20 +108,41 @@ export class MoviesService {
         if (search) where.title = { contains: search, mode: 'insensitive' };
 
         const [movies, total] = await Promise.all([
-            this.prisma.movie.findMany({ where, take: limit, skip, orderBy: { createdAt: 'desc' }, include: { genres: { include: { genre: true } } } }),
+            this.prisma.movie.findMany({
+                where,
+                take: limit,
+                skip,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    genres: { include: { genre: true } },
+                    actors: { include: { actor: true } },
+                },
+            }),
             this.prisma.movie.count({ where })
         ]);
 
-        return { data: movies.map((m: typeof movies[number]) => this.formatMovie(m)), total };
+        return { data: movies.map((m) => this.formatMovie(m)), total };
     }
 
     async findById(id: string, user?: any) {
-        const movie = await this.prisma.movie.findUnique({ where: { id }, include: { genres: { include: { genre: true } } } });
+        const movie = await this.prisma.movie.findUnique({
+            where: { id },
+            include: {
+                genres: { include: { genre: true } },
+                actors: { include: { actor: true } },
+            },
+        });
         if (!movie) throw new NotFoundException('Movie not found');
         return this.formatMovie(movie);
     }
 
     async delete(id: string) {
+        const movie = await this.prisma.movie.findUnique({ where: { id } });
+        if (!movie) throw new NotFoundException('Movie not found');
+
+        // Cleanup S3 files
+        await this.cleanupMovieFiles(id);
+
         await this.prisma.movie.delete({ where: { id } });
         return { success: true };
     }
@@ -104,6 +168,20 @@ export class MoviesService {
             }
         }
 
+        // Handle actor updates
+        if (dto.actors !== undefined) {
+            // Remove existing relations
+            await this.prisma.movieActor.deleteMany({ where: { movieId: id } });
+
+            if (dto.actors.length > 0) {
+                const actorIds = await this.resolveActorIds(dto.actors);
+                // Create new relations
+                await this.prisma.movieActor.createMany({
+                    data: actorIds.map((actorId) => ({ movieId: id, actorId })),
+                });
+            }
+        }
+
         const movie = await this.prisma.movie.update({
             where: { id },
             data: {
@@ -114,6 +192,7 @@ export class MoviesService {
             },
             include: {
                 genres: { include: { genre: true } },
+                actors: { include: { actor: true } },
             },
         });
 
@@ -121,6 +200,25 @@ export class MoviesService {
         this.aiService.triggerRetrain().catch(err => console.warn('AI Retrain failed', err));
 
         return this.formatMovie(movie);
+    }
+
+    private async resolveActorIds(names: string[]): Promise<string[]> {
+        const uniqueNames = [...new Set(names.filter(n => n.trim().length > 0))];
+        if (uniqueNames.length === 0) return [];
+
+        const existingActors = await this.prisma.actor.findMany({
+            where: { name: { in: uniqueNames, mode: 'insensitive' } },
+        });
+
+        const existingNamesMap = new Set(existingActors.map((a) => a.name.toLowerCase()));
+        const missingNames = uniqueNames.filter((n) => !existingNamesMap.has(n.toLowerCase()));
+
+        // Create missing actors
+        const newActors = await Promise.all(
+            missingNames.map((name) => this.prisma.actor.create({ data: { name } }))
+        );
+
+        return [...existingActors, ...newActors].map((a) => a.id);
     }
 
     async publish(id: string, published: boolean) {
@@ -214,6 +312,7 @@ export class MoviesService {
                 { name: '360p', suffix: 'v0/prog_index.m3u8' },
                 { name: '480p', suffix: 'v1/prog_index.m3u8' },
                 { name: '720p', suffix: 'v2/prog_index.m3u8' },
+                { name: '1080p', suffix: 'v3/prog_index.m3u8' },
             ];
 
             qualityOptions = variants.map((v) => {
@@ -232,6 +331,7 @@ export class MoviesService {
                 { name: '360p', suffix: 'v0/prog_index.m3u8' },
                 { name: '480p', suffix: 'v1/prog_index.m3u8' },
                 { name: '720p', suffix: 'v2/prog_index.m3u8' },
+                { name: '1080p', suffix: 'v3/prog_index.m3u8' },
             ];
 
             qualityOptions = await Promise.all(
@@ -299,6 +399,7 @@ export class MoviesService {
         trailerUrl?: string | null;
         subtitleUrl?: string | null;
         genres?: { genre: { id: string; name: string; slug: string } }[];
+        actors?: { actor: { id: string; name: string; avatarUrl: string | null } }[];
     }) {
         return {
             id: movie.id,
@@ -315,6 +416,11 @@ export class MoviesService {
                 name: mg.genre.name,
                 slug: mg.genre.slug,
             })) || [],
+            actors: movie.actors?.map((ma) => ({
+                id: ma.actor.id,
+                name: ma.actor.name,
+                avatarUrl: ma.actor.avatarUrl,
+            })) || [],
             // TMDb fields
             tmdbId: movie.tmdbId || null,
             voteAverage: movie.voteAverage || null,
@@ -326,5 +432,43 @@ export class MoviesService {
             createdAt: movie.createdAt.toISOString(),
             updatedAt: movie.updatedAt.toISOString(),
         };
+    }
+
+    private async cleanupMovieFiles(movieId: string) {
+        const prefixes = [
+            `originals/${movieId}/`,
+            `hls/${movieId}/`,
+            `posters/${movieId}/`,
+            `subtitles/${movieId}/`
+        ];
+
+        for (const prefix of prefixes) {
+            await this.deleteFolder(prefix);
+        }
+    }
+
+    private async deleteFolder(prefix: string) {
+        let continuationToken: string | undefined;
+        do {
+            const listCommand = new ListObjectsV2Command({
+                Bucket: this.bucket,
+                Prefix: prefix,
+                ContinuationToken: continuationToken,
+            });
+            const listResult = await this.s3Client.send(listCommand);
+
+            if (listResult.Contents && listResult.Contents.length > 0) {
+                const deleteCommand = new DeleteObjectsCommand({
+                    Bucket: this.bucket,
+                    Delete: {
+                        Objects: listResult.Contents.map((obj) => ({ Key: obj.Key })),
+                        Quiet: true,
+                    },
+                });
+                await this.s3Client.send(deleteCommand);
+            }
+
+            continuationToken = listResult.NextContinuationToken;
+        } while (continuationToken);
     }
 }

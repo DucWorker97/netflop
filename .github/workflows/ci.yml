@@ -1,0 +1,156 @@
+# ==============================================================================
+# GitHub Actions CI Workflow
+# ==============================================================================
+# Runs on: Pull Requests, Push to main
+# Gates: verify (P0), smoke (P0)
+# ==============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '9.15.0'
+
+jobs:
+  # ============================================================================
+  # VERIFY GATE (P0) - Lint, Typecheck, Build
+  # ============================================================================
+  verify:
+    name: Verify (Lint, Typecheck, Build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Run Verify Gate
+        run: |
+          chmod +x ./scripts/ci/verify.sh
+          ./scripts/ci/verify.sh
+
+  # ============================================================================
+  # SMOKE GATE (P0) - Infrastructure & Service Health
+  # ============================================================================
+  smoke:
+    name: Smoke (Infrastructure Health)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: verify  # Run after verify passes
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start Infrastructure
+        run: docker compose up -d
+
+      - name: Wait for Services to be Healthy
+        run: |
+          echo "Waiting for services to become healthy..."
+          sleep 10
+          
+          # Wait for postgres
+          timeout 60 bash -c 'until docker inspect --format="{{.State.Health.Status}}" netflop-postgres 2>/dev/null | grep -q healthy; do sleep 2; done' || true
+          
+          # Wait for redis
+          timeout 60 bash -c 'until docker inspect --format="{{.State.Health.Status}}" netflop-redis 2>/dev/null | grep -q healthy; do sleep 2; done' || true
+          
+          # Wait for minio
+          timeout 60 bash -c 'until docker inspect --format="{{.State.Health.Status}}" netflop-minio 2>/dev/null | grep -q healthy; do sleep 2; done' || true
+          
+          docker compose ps
+
+      - name: Run Database Migrations
+        run: pnpm db:migrate:deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/netflop
+
+      - name: Start API in Background
+        run: |
+          pnpm --filter @netflop/api dev &
+          sleep 15  # Wait for API to start
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/netflop
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: ci-test-secret
+          JWT_REFRESH_SECRET: ci-test-refresh-secret
+          S3_ENDPOINT: http://localhost:9000
+          S3_REGION: us-east-1
+          S3_ACCESS_KEY: minioadmin
+          S3_SECRET_KEY: minioadmin
+          S3_BUCKET: netflop-media
+
+      - name: Run Smoke Gate
+        run: |
+          chmod +x ./scripts/ci/smoke.sh
+          SKIP_COMPOSE_UP=true ./scripts/ci/smoke.sh
+        env:
+          SMOKE_TIMEOUT: '90'
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
+
+  # ============================================================================
+  # Summary
+  # ============================================================================
+  ci-complete:
+    name: CI Complete
+    runs-on: ubuntu-latest
+    needs: [verify, smoke]
+    if: always()
+    
+    steps:
+      - name: Check Results
+        run: |
+          if [[ "${{ needs.verify.result }}" == "success" && "${{ needs.smoke.result }}" == "success" ]]; then
+            echo "✅ All CI gates passed!"
+            exit 0
+          else
+            echo "❌ CI failed"
+            echo "  Verify: ${{ needs.verify.result }}"
+            echo "  Smoke: ${{ needs.smoke.result }}"
+            exit 1
+          fi
