@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useMovies, useDeleteMovie, usePublishMovie, type Movie } from '@/lib/queries';
 import { useLocalePath } from '@/lib/use-locale-path';
 import styles from './movies.module.css';
@@ -39,7 +40,13 @@ function MovieRow({ movie, onDelete, onPublish }: {
             <td>
                 <div className={styles.movieInfo}>
                     {movie.posterUrl ? (
-                        <img src={movie.posterUrl} alt="" className={styles.poster} />
+                        <Image
+                            src={movie.posterUrl}
+                            alt=""
+                            className={styles.poster}
+                            width={44}
+                            height={62}
+                        />
                     ) : (
                         <div className={styles.posterPlaceholder}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">

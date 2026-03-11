@@ -1,109 +1,110 @@
 'use client';
 
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
-import { useState, useCallback } from 'react';
+import {
+    ActivityIndicator,
+    FlatList,
+    Image,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useCallback } from 'react';
 import { useRouter } from 'expo-router';
+import { useWatchHistory, type HistoryItem } from '../../src/hooks/queries';
 
-interface HistoryItem {
-    id: string;
-    movieId: string;
-    title: string;
-    posterUrl: string | null;
-    watchedAt: string;
-    progress: number; // 0-100
-    durationSeconds: number;
+function formatDuration(seconds: number) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    }
+
+    return `${minutes}m`;
 }
 
-const mockHistory: HistoryItem[] = [
-    { id: '1', movieId: 'm1', title: 'Dune: Part Two', posterUrl: null, watchedAt: new Date().toISOString(), progress: 45, durationSeconds: 9960 },
-    { id: '2', movieId: 'm2', title: 'Oppenheimer', posterUrl: null, watchedAt: new Date(Date.now() - 3600000).toISOString(), progress: 100, durationSeconds: 10800 },
-    { id: '3', movieId: 'm3', title: 'The Batman', posterUrl: null, watchedAt: new Date(Date.now() - 86400000).toISOString(), progress: 75, durationSeconds: 10560 },
-    { id: '4', movieId: 'm4', title: 'Spider-Man: No Way Home', posterUrl: null, watchedAt: new Date(Date.now() - 172800000).toISOString(), progress: 100, durationSeconds: 8880 },
-];
+function formatWatchedAt(dateStr: string) {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString();
+}
+
+function getProgressPercent(item: HistoryItem) {
+    if (item.durationSeconds <= 0) return 0;
+    return Math.min(100, Math.round((item.progressSeconds / item.durationSeconds) * 100));
+}
 
 export default function HistoryScreen() {
     const router = useRouter();
-    const [history, setHistory] = useState<HistoryItem[]>(mockHistory);
-    const [refreshing, setRefreshing] = useState(false);
+    const { data: history = [], isLoading, isRefetching, refetch } = useWatchHistory();
 
     const onRefresh = useCallback(async () => {
-        setRefreshing(true);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setRefreshing(false);
-    }, []);
+        await refetch();
+    }, [refetch]);
 
-    const clearHistory = () => {
-        setHistory([]);
-    };
+    const renderItem = ({ item }: { item: HistoryItem }) => {
+        const progressPercent = getProgressPercent(item);
+        const movieTitle = item.movie.title;
 
-    const removeItem = (id: string) => {
-        setHistory(prev => prev.filter(item => item.id !== id));
-    };
-
-    const formatDuration = (seconds: number) => {
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        return `${h}h ${m}m`;
-    };
-
-    const formatWatchedAt = (dateStr: string) => {
-        const date = new Date(dateStr);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffHours < 1) return 'Just now';
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays === 1) return 'Yesterday';
-        if (diffDays < 7) return `${diffDays} days ago`;
-        return date.toLocaleDateString();
-    };
-
-    const renderItem = ({ item }: { item: HistoryItem }) => (
-        <TouchableOpacity
-            style={styles.item}
-            onPress={() => router.push(`/movie/${item.movieId}`)}
-        >
-            <View style={styles.poster}>
-                <Text style={styles.posterLetter}>{item.title.charAt(0)}</Text>
-                <View style={styles.progressBar}>
-                    <View style={[styles.progressFill, { width: `${item.progress}%` }]} />
+        return (
+            <TouchableOpacity
+                style={styles.item}
+                onPress={() => router.push(`/movie/${item.movieId}`)}
+            >
+                <View style={styles.poster}>
+                    {item.movie.posterUrl ? (
+                        <Image source={{ uri: item.movie.posterUrl }} style={styles.posterImage} />
+                    ) : (
+                        <Text style={styles.posterLetter}>{movieTitle.charAt(0).toUpperCase()}</Text>
+                    )}
+                    <View style={styles.progressBar}>
+                        <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
+                    </View>
                 </View>
-            </View>
 
-            <View style={styles.info}>
-                <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-                <Text style={styles.meta}>
-                    {formatDuration(item.durationSeconds)} • {item.progress === 100 ? 'Completed' : `${item.progress}% watched`}
-                </Text>
-                <Text style={styles.watchedAt}>{formatWatchedAt(item.watchedAt)}</Text>
-            </View>
-
-            <TouchableOpacity style={styles.removeBtn} onPress={() => removeItem(item.id)}>
-                <Text style={styles.removeIcon}>×</Text>
+                <View style={styles.info}>
+                    <Text style={styles.title} numberOfLines={1}>
+                        {movieTitle}
+                    </Text>
+                    <Text style={styles.meta}>
+                        {formatDuration(item.durationSeconds)} {' | '}
+                        {item.completed ? 'Completed' : `${progressPercent}% watched`}
+                    </Text>
+                    <Text style={styles.watchedAt}>{formatWatchedAt(item.updatedAt)}</Text>
+                </View>
             </TouchableOpacity>
-        </TouchableOpacity>
-    );
+        );
+    };
+
+    if (isLoading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#3b82f6" />
+                <Text style={styles.loadingText}>Loading history...</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
-            {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Watch History</Text>
-                {history.length > 0 && (
-                    <TouchableOpacity onPress={clearHistory}>
-                        <Text style={styles.clearBtn}>Clear All</Text>
-                    </TouchableOpacity>
-                )}
             </View>
 
-            {/* History List */}
             {history.length === 0 ? (
                 <View style={styles.empty}>
-                    <Text style={styles.emptyIcon}>📺</Text>
                     <Text style={styles.emptyTitle}>No Watch History</Text>
-                    <Text style={styles.emptyText}>Movies you watch will appear here</Text>
+                    <Text style={styles.emptyText}>Movies you watch will appear here.</Text>
                     <TouchableOpacity style={styles.browseBtn} onPress={() => router.push('/')}>
                         <Text style={styles.browseBtnText}>Start Watching</Text>
                     </TouchableOpacity>
@@ -111,11 +112,11 @@ export default function HistoryScreen() {
             ) : (
                 <FlatList
                     data={history}
-                    keyExtractor={item => item.id}
+                    keyExtractor={(item) => item.id}
                     renderItem={renderItem}
                     refreshControl={
                         <RefreshControl
-                            refreshing={refreshing}
+                            refreshing={isRefetching}
                             onRefresh={onRefresh}
                             tintColor="#fff"
                         />
@@ -134,6 +135,16 @@ const styles = StyleSheet.create({
         backgroundColor: '#0d0d0d',
         paddingTop: 60,
     },
+    loadingContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#0d0d0d',
+    },
+    loadingText: {
+        color: '#fff',
+        marginTop: 12,
+    },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -145,10 +156,6 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: 'bold',
         color: '#fff',
-    },
-    clearBtn: {
-        color: '#3b82f6',
-        fontSize: 14,
     },
     list: {
         paddingHorizontal: 16,
@@ -169,6 +176,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
+    },
+    posterImage: {
+        width: '100%',
+        height: '100%',
     },
     posterLetter: {
         color: '#555',
@@ -206,25 +217,11 @@ const styles = StyleSheet.create({
         color: '#666',
         fontSize: 11,
     },
-    removeBtn: {
-        width: 40,
-        height: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    removeIcon: {
-        color: '#666',
-        fontSize: 24,
-    },
     empty: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 32,
-    },
-    emptyIcon: {
-        fontSize: 64,
-        marginBottom: 16,
     },
     emptyTitle: {
         color: '#fff',

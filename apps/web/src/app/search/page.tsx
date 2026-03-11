@@ -23,10 +23,6 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 30 }, (_, i) => CURRENT_YEAR - i);
 
 export default function AdvancedSearchPage() {
-    if (!FEATURE_FLAGS.search) {
-        return <FeatureDisabled title="Search is paused" message="Use the Movies page to browse while we focus on core streaming." />;
-    }
-
     const [searchTerm, setSearchTerm] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({
@@ -88,6 +84,10 @@ export default function AdvancedSearchPage() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    if (!FEATURE_FLAGS.search) {
+        return <FeatureDisabled title="Search is paused" message="Use the Movies page to browse while we focus on core streaming." />;
+    }
 
     const movies = data?.data || [];
     const hasActiveFilters = Object.values(filters).some(v => v !== '' && v !== 'relevance');

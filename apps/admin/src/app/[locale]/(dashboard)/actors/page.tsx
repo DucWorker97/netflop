@@ -1,72 +1,95 @@
 'use client';
 
-import { useState } from 'react';
+import { useDeferredValue, useState } from 'react';
+import Image from 'next/image';
 import styles from './actors.module.css';
-
-interface Actor {
-    id: string;
-    name: string;
-    avatarUrl: string | null;
-    movieCount: number;
-    createdAt: string;
-}
-
-const mockActors: Actor[] = [
-    { id: '1', name: 'Robert Downey Jr.', avatarUrl: null, movieCount: 12, createdAt: '2024-01-15' },
-    { id: '2', name: 'Scarlett Johansson', avatarUrl: null, movieCount: 8, createdAt: '2024-01-16' },
-    { id: '3', name: 'Chris Evans', avatarUrl: null, movieCount: 10, createdAt: '2024-01-17' },
-    { id: '4', name: 'Timothée Chalamet', avatarUrl: null, movieCount: 5, createdAt: '2024-01-18' },
-];
+import {
+    useActors,
+    useCreateActor,
+    useUpdateActor,
+    useDeleteActor,
+    type Actor,
+} from '@/lib/queries';
 
 export default function ActorsPage() {
-    const [actors, setActors] = useState<Actor[]>(mockActors);
+    const { data: actors = [], isLoading, error } = useActors();
+    const createActor = useCreateActor();
+    const updateActor = useUpdateActor();
+    const deleteActor = useDeleteActor();
+
     const [showAddModal, setShowAddModal] = useState(false);
     const [newActor, setNewActor] = useState({ name: '', avatarUrl: '' });
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingName, setEditingName] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const deferredSearchQuery = useDeferredValue(searchQuery);
 
-    const filteredActors = actors.filter(a =>
-        a.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredActors = actors.filter((actor) =>
+        actor.name.toLowerCase().includes(deferredSearchQuery.toLowerCase())
     );
 
-    const handleAdd = () => {
-        if (!newActor.name.trim()) return;
-        const actor: Actor = {
-            id: Date.now().toString(),
-            name: newActor.name,
-            avatarUrl: newActor.avatarUrl || null,
-            movieCount: 0,
-            createdAt: new Date().toISOString(),
-        };
-        setActors([...actors, actor]);
-        setNewActor({ name: '', avatarUrl: '' });
-        setShowAddModal(false);
-    };
+    async function handleAdd() {
+        const name = newActor.name.trim();
+        if (!name) return;
 
-    const handleUpdate = (id: string) => {
-        setActors(actors.map(a =>
-            a.id === id ? { ...a, name: editingName } : a
-        ));
-        setEditingId(null);
-    };
-
-    const handleDelete = (id: string) => {
-        if (confirm('Delete this actor?')) {
-            setActors(actors.filter(a => a.id !== id));
+        try {
+            await createActor.mutateAsync({
+                name,
+                avatarUrl: newActor.avatarUrl.trim() || undefined,
+            });
+            setNewActor({ name: '', avatarUrl: '' });
+            setShowAddModal(false);
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to create actor');
         }
-    };
+    }
+
+    async function handleUpdate(id: string) {
+        const name = editingName.trim();
+        if (!name) return;
+
+        try {
+            await updateActor.mutateAsync({
+                id,
+                input: { name },
+            });
+            setEditingId(null);
+            setEditingName('');
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to update actor');
+        }
+    }
+
+    async function handleDelete(actor: Actor) {
+        if (!confirm(`Delete "${actor.name}"?`)) return;
+
+        try {
+            await deleteActor.mutateAsync(actor.id);
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to delete actor');
+        }
+    }
+
+    if (isLoading) {
+        return (
+            <div>
+                <div className={styles.header}>
+                    <h1>Actors Management</h1>
+                </div>
+                <div className="skeleton" style={{ height: 280 }} />
+            </div>
+        );
+    }
 
     return (
         <div>
             <div className={styles.header}>
-                <h1>👤 Actors Management</h1>
+                <h1>Actors Management</h1>
                 <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
                     + Add Actor
                 </button>
             </div>
 
-            {/* Search */}
             <div className={styles.searchContainer}>
                 <input
                     type="text"
@@ -77,7 +100,12 @@ export default function ActorsPage() {
                 />
             </div>
 
-            {/* Stats */}
+            {error && (
+                <div className={styles.empty}>
+                    <p>{error instanceof Error ? error.message : 'Failed to load actors'}</p>
+                </div>
+            )}
+
             <div className={styles.stats}>
                 <div className={styles.statCard}>
                     <div className={styles.statValue}>{actors.length}</div>
@@ -85,21 +113,26 @@ export default function ActorsPage() {
                 </div>
                 <div className={styles.statCard}>
                     <div className={styles.statValue}>
-                        {actors.reduce((sum, a) => sum + a.movieCount, 0)}
+                        {actors.reduce((sum, actor) => sum + actor.movieCount, 0)}
                     </div>
                     <div className={styles.statLabel}>Movie Appearances</div>
                 </div>
             </div>
 
-            {/* Actors Grid */}
             <div className={styles.grid}>
                 {filteredActors.map((actor) => (
                     <div key={actor.id} className={styles.card}>
                         <div className={styles.avatar}>
                             {actor.avatarUrl ? (
-                                <img src={actor.avatarUrl} alt={actor.name} />
+                                <Image
+                                    src={actor.avatarUrl}
+                                    alt={actor.name}
+                                    width={80}
+                                    height={80}
+                                    className={styles.avatarImage}
+                                />
                             ) : (
-                                <span>{actor.name.charAt(0)}</span>
+                                <span>{actor.name.charAt(0).toUpperCase()}</span>
                             )}
                         </div>
 
@@ -113,10 +146,20 @@ export default function ActorsPage() {
                                     autoFocus
                                 />
                                 <div className={styles.editActions}>
-                                    <button className="btn btn-primary" onClick={() => handleUpdate(actor.id)}>
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={() => handleUpdate(actor.id)}
+                                        disabled={updateActor.isPending}
+                                    >
                                         Save
                                     </button>
-                                    <button className="btn btn-secondary" onClick={() => setEditingId(null)}>
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => {
+                                            setEditingId(null);
+                                            setEditingName('');
+                                        }}
+                                    >
                                         Cancel
                                     </button>
                                 </div>
@@ -133,13 +176,13 @@ export default function ActorsPage() {
                                             setEditingName(actor.name);
                                         }}
                                     >
-                                        ✏️ Edit
+                                        Edit
                                     </button>
                                     <button
                                         className={`${styles.actionBtn} ${styles.deleteBtn}`}
-                                        onClick={() => handleDelete(actor.id)}
+                                        onClick={() => handleDelete(actor)}
                                     >
-                                        🗑️ Delete
+                                        Delete
                                     </button>
                                 </div>
                             </>
@@ -148,15 +191,13 @@ export default function ActorsPage() {
                 ))}
             </div>
 
-            {/* Empty State */}
-            {filteredActors.length === 0 && (
+            {!error && filteredActors.length === 0 && (
                 <div className={styles.empty}>
-                    <span className={styles.emptyIcon}>🎭</span>
+                    <span className={styles.emptyIcon}>Actors</span>
                     <p>No actors found</p>
                 </div>
             )}
 
-            {/* Add Modal */}
             {showAddModal && (
                 <div className={styles.modal}>
                     <div className={styles.modalContent}>
@@ -168,7 +209,7 @@ export default function ActorsPage() {
                                 type="text"
                                 className="input"
                                 value={newActor.name}
-                                onChange={(e) => setNewActor(prev => ({ ...prev, name: e.target.value }))}
+                                onChange={(e) => setNewActor((prev) => ({ ...prev, name: e.target.value }))}
                                 placeholder="Actor name"
                             />
                         </div>
@@ -179,7 +220,7 @@ export default function ActorsPage() {
                                 type="url"
                                 className="input"
                                 value={newActor.avatarUrl}
-                                onChange={(e) => setNewActor(prev => ({ ...prev, avatarUrl: e.target.value }))}
+                                onChange={(e) => setNewActor((prev) => ({ ...prev, avatarUrl: e.target.value }))}
                                 placeholder="https://..."
                             />
                         </div>
@@ -191,9 +232,9 @@ export default function ActorsPage() {
                             <button
                                 className="btn btn-primary"
                                 onClick={handleAdd}
-                                disabled={!newActor.name.trim()}
+                                disabled={!newActor.name.trim() || createActor.isPending}
                             >
-                                Add Actor
+                                {createActor.isPending ? 'Adding...' : 'Add Actor'}
                             </button>
                         </div>
                     </div>

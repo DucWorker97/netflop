@@ -31,6 +31,17 @@ interface User {
     role: string;
 }
 
+interface ForgotPasswordResult {
+    message: string;
+    resetToken?: string;
+    resetUrl?: string;
+    expiresAt?: string;
+}
+
+interface PasswordActionResult {
+    message: string;
+}
+
 interface PaginationMeta {
     page: number;
     limit: number;
@@ -38,7 +49,7 @@ interface PaginationMeta {
     totalPages: number;
 }
 
-interface HistoryItem {
+export interface HistoryItem {
     id: string;
     movieId: string;
     movie: Movie;
@@ -53,6 +64,44 @@ interface FavoriteItem {
     movieId: string;
     movie: Movie;
     createdAt: string;
+}
+
+export interface NotificationItem {
+    id: string;
+    title: string;
+    message: string;
+    type: 'INFO' | 'ALERT' | 'NEW_MOVIE';
+    movieId: string | null;
+    isRead: boolean;
+    createdAt: string;
+}
+
+export interface SimilarMovie {
+    id: string;
+    movie_id?: string;
+    title: string;
+    posterUrl: string | null;
+    releaseYear?: number | null;
+    score?: number | null;
+    reason?: string | null;
+    genres?: Genre[];
+}
+
+export interface RecommendationMovie {
+    id: string;
+    movie_id: string;
+    title: string;
+    posterUrl: string | null;
+    releaseYear?: number | null;
+    score?: number | null;
+    reason?: string | null;
+    genres?: Genre[];
+}
+
+export interface RecommendationsResponse {
+    user_id: string;
+    recommendations: RecommendationMovie[];
+    algorithm?: string;
 }
 
 // Auth
@@ -157,8 +206,9 @@ export function useSimilarMovies(movieId: string) {
     return useQuery({
         queryKey: ['movies', movieId, 'similar'],
         queryFn: async () => {
-            // Response format from python service via nestjs: { movie_id: string, similar_movies: Array<{ movie_id, title, posterUrl, score, reason }> }
-            const res = await api.get<{ movie_id: string; similar_movies: any[] }>(`/api/ai/movies/${movieId}/similar`);
+            const res = await api.get<{ movie_id: string; similar_movies: SimilarMovie[] }>(
+                `/api/ai/movies/${movieId}/similar`
+            );
             return res.similar_movies;
         },
         enabled: !!movieId,
@@ -171,6 +221,37 @@ export function useContinueWatching() {
         queryKey: ['history', 'continue'],
         queryFn: async () => {
             const res = await api.get<{ data: HistoryItem[] }>('/api/history?continueWatching=true');
+            return res.data;
+        },
+    });
+}
+
+export function useForgotPassword() {
+    return useMutation({
+        mutationFn: async ({ email }: { email: string }) => {
+            const res = await api.post<{ data: ForgotPasswordResult }>('/api/auth/forgot-password', { email });
+            return res.data;
+        },
+    });
+}
+
+export function useResetPassword() {
+    return useMutation({
+        mutationFn: async ({ token, newPassword }: { token: string; newPassword: string }) => {
+            const res = await api.post<{ data: PasswordActionResult }>('/api/auth/reset-password', {
+                token,
+                newPassword,
+            });
+            return res.data;
+        },
+    });
+}
+
+export function useWatchHistory() {
+    return useQuery({
+        queryKey: ['history'],
+        queryFn: async () => {
+            const res = await api.get<{ data: HistoryItem[] }>('/api/history');
             return res.data;
         },
     });
@@ -193,6 +274,30 @@ export function useUpdateProgress() {
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['progress', variables.movieId] });
             queryClient.invalidateQueries({ queryKey: ['history'] });
+        },
+    });
+}
+
+// Notifications
+export function useNotifications() {
+    return useQuery({
+        queryKey: ['notifications'],
+        queryFn: async () => api.get<NotificationItem[]>('/api/notifications'),
+    });
+}
+
+export function useMarkNotificationsRead() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (notificationIds: string[]) => {
+            return Promise.all(
+                notificationIds.map((notificationId) =>
+                    api.patch<NotificationItem>(`/api/notifications/${notificationId}/read`)
+                )
+            );
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
         },
     });
 }
@@ -315,11 +420,10 @@ export function useRecommendations(limit = 10) {
     return useQuery({
         queryKey: ['recommendations', limit],
         queryFn: async () => {
-            // Response format from nestjs: { user_id, recommendations: Array<{ movie_id, title, score, reason }> }
-            const res = await api.get<{ user_id: string; recommendations: any[] }>(
+            const res = await api.get<RecommendationsResponse>(
                 `/api/ai/recommendations?limit=${limit}`
             );
-            return res.recommendations;
+            return res;
         },
         retry: false, // Don't retry if AI service is down, just hide the rail
     });

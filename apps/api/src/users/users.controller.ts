@@ -1,6 +1,29 @@
-import { Controller, Get, Post, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { IsString, Matches, MinLength, IsOptional, MaxLength } from 'class-validator';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+    MIN_PASSWORD_LENGTH,
+    PASSWORD_POLICY_MESSAGE,
+    PASSWORD_POLICY_REGEX,
+} from '../common/utils/security';
+
+class ChangePasswordDto {
+    @IsString()
+    currentPassword!: string;
+
+    @IsString()
+    @MinLength(MIN_PASSWORD_LENGTH)
+    @Matches(PASSWORD_POLICY_REGEX, { message: PASSWORD_POLICY_MESSAGE })
+    newPassword!: string;
+}
+
+class DisableUserDto {
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
+    reason?: string;
+}
 
 @Controller('users')
 export class UsersController {
@@ -17,9 +40,43 @@ export class UsersController {
     @UseGuards(JwtAuthGuard)
     async changePassword(
         @Req() req: any,
-        @Body() dto: { currentPassword: string; newPassword: string }
+        @Body() dto: ChangePasswordDto
     ) {
         await this.usersService.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
         return { data: { message: 'Password changed successfully' } };
+    }
+
+    /**
+     * Admin: Disable a user account
+     */
+    @Patch(':id/disable')
+    @UseGuards(JwtAuthGuard)
+    async disableUser(
+        @Req() req: any,
+        @Param('id') id: string,
+        @Body() dto: DisableUserDto,
+    ) {
+        // Only admins can disable users
+        if (req.user.role !== 'admin') {
+            throw new Error('Forbidden');
+        }
+        await this.usersService.disableUser(id, dto.reason);
+        return { data: { message: 'User account disabled' } };
+    }
+
+    /**
+     * Admin: Re-enable a user account
+     */
+    @Patch(':id/enable')
+    @UseGuards(JwtAuthGuard)
+    async enableUser(
+        @Req() req: any,
+        @Param('id') id: string,
+    ) {
+        if (req.user.role !== 'admin') {
+            throw new Error('Forbidden');
+        }
+        await this.usersService.enableUser(id);
+        return { data: { message: 'User account re-enabled' } };
     }
 }

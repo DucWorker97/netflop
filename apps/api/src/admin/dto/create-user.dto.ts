@@ -1,12 +1,18 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 import { UserRole } from '@prisma/client';
+import {
+    MIN_PASSWORD_LENGTH,
+    PASSWORD_POLICY_MESSAGE,
+    PASSWORD_POLICY_REGEX,
+} from '../../common/utils/security';
 
 export class CreateUserDto {
     @IsEmail()
     email!: string;
 
     @IsString()
-    @MinLength(6)
+    @MinLength(MIN_PASSWORD_LENGTH)
+    @Matches(PASSWORD_POLICY_REGEX, { message: PASSWORD_POLICY_MESSAGE })
     password!: string;
 
     @IsOptional()

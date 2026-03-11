@@ -1,183 +1,169 @@
 'use client';
 
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
-import { useState, useCallback } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useCallback, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInRight } from 'react-native-reanimated';
+import {
+    useMarkNotificationsRead,
+    useNotifications,
+    type NotificationItem,
+} from '../../src/hooks/queries';
 
-interface Notification {
-    id: string;
-    type: 'new_release' | 'recommendation' | 'update' | 'promo';
-    title: string;
-    message: string;
-    movieId?: string;
-    posterUrl?: string;
-    createdAt: string;
-    read: boolean;
+function getIconLabel(type: NotificationItem['type']) {
+    switch (type) {
+        case 'NEW_MOVIE':
+            return 'N';
+        case 'ALERT':
+            return '!';
+        default:
+            return 'i';
+    }
 }
 
-const mockNotifications: Notification[] = [
-    {
-        id: '1',
-        type: 'new_release',
-        title: 'New Release',
-        message: 'Dune: Part Two is now available! Watch the epic continuation.',
-        movieId: '1',
-        createdAt: new Date().toISOString(),
-        read: false,
-    },
-    {
-        id: '2',
-        type: 'recommendation',
-        title: 'Because You Watched Inception',
-        message: 'You might enjoy Interstellar - a mind-bending space epic.',
-        movieId: '2',
-        createdAt: new Date(Date.now() - 3600000).toISOString(),
-        read: false,
-    },
-    {
-        id: '3',
-        type: 'update',
-        title: 'Continue Watching',
-        message: 'You left off at 1:23:45 in The Dark Knight. Resume now?',
-        movieId: '3',
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        read: true,
-    },
-    {
-        id: '4',
-        type: 'promo',
-        title: 'Top 10 This Week',
-        message: 'Check out the most watched movies this week!',
-        createdAt: new Date(Date.now() - 172800000).toISOString(),
-        read: true,
-    },
-];
+function formatTime(dateString: string) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${Math.max(diffMins, 1)}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+}
 
 export default function NotificationsScreen() {
     const router = useRouter();
-    const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
-    const [refreshing, setRefreshing] = useState(false);
+    const { data: notifications = [], isLoading, isRefetching, refetch } = useNotifications();
+    const markNotificationsRead = useMarkNotificationsRead();
 
-    const unreadCount = notifications.filter(n => !n.read).length;
+    const unreadCount = useMemo(
+        () => notifications.filter((notification) => !notification.isRead).length,
+        [notifications]
+    );
 
     const onRefresh = useCallback(async () => {
-        setRefreshing(true);
-        // Simulate API refresh
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setRefreshing(false);
-    }, []);
+        await refetch();
+    }, [refetch]);
 
-    const markAsRead = (id: string) => {
-        setNotifications(prev =>
-            prev.map(n => n.id === id ? { ...n, read: true } : n)
-        );
-    };
+    async function markAllAsRead() {
+        const unreadIds = notifications
+            .filter((notification) => !notification.isRead)
+            .map((notification) => notification.id);
 
-    const markAllAsRead = () => {
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    };
+        if (unreadIds.length === 0) return;
 
-    const clearAll = () => {
-        setNotifications([]);
-    };
+        try {
+            await markNotificationsRead.mutateAsync(unreadIds);
+        } catch (error) {
+            Alert.alert(
+                'Unable to update notifications',
+                error instanceof Error ? error.message : 'Please try again.'
+            );
+        }
+    }
 
-    const handlePress = (notification: Notification) => {
-        markAsRead(notification.id);
+    async function handlePress(notification: NotificationItem) {
+        if (!notification.isRead) {
+            try {
+                await markNotificationsRead.mutateAsync([notification.id]);
+            } catch (error) {
+                Alert.alert(
+                    'Unable to update notification',
+                    error instanceof Error ? error.message : 'Please try again.'
+                );
+            }
+        }
+
         if (notification.movieId) {
             router.push(`/movie/${notification.movieId}`);
         }
-    };
+    }
 
-    const getIcon = (type: Notification['type']) => {
-        switch (type) {
-            case 'new_release': return '🎬';
-            case 'recommendation': return '✨';
-            case 'update': return '▶️';
-            case 'promo': return '🔥';
-            default: return '📢';
-        }
-    };
-
-    const formatTime = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
-        return date.toLocaleDateString();
-    };
-
-    const renderNotification = ({ item, index }: { item: Notification; index: number }) => (
+    const renderNotification = ({
+        item,
+        index,
+    }: {
+        item: NotificationItem;
+        index: number;
+    }) => (
         <Animated.View entering={FadeInRight.delay(index * 80)}>
             <TouchableOpacity
-                style={[styles.notificationItem, !item.read && styles.unreadItem]}
+                style={[styles.notificationItem, !item.isRead && styles.unreadItem]}
                 onPress={() => handlePress(item)}
             >
                 <View style={styles.iconContainer}>
-                    <Text style={styles.icon}>{getIcon(item.type)}</Text>
-                    {!item.read && <View style={styles.unreadDot} />}
+                    <Text style={styles.icon}>{getIconLabel(item.type)}</Text>
+                    {!item.isRead && <View style={styles.unreadDot} />}
                 </View>
                 <View style={styles.content}>
                     <Text style={styles.title}>{item.title}</Text>
-                    <Text style={styles.message} numberOfLines={2}>{item.message}</Text>
+                    <Text style={styles.message} numberOfLines={2}>
+                        {item.message}
+                    </Text>
                     <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
                 </View>
                 {item.movieId && (
                     <View style={styles.arrow}>
-                        <Text style={styles.arrowText}>›</Text>
+                        <Text style={styles.arrowText}>{'>'}</Text>
                     </View>
                 )}
             </TouchableOpacity>
         </Animated.View>
     );
 
+    if (isLoading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#3b82f6" />
+                <Text style={styles.loadingText}>Loading notifications...</Text>
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
-            {/* Header */}
             <View style={styles.header}>
                 <View>
                     <Text style={styles.headerTitle}>Notifications</Text>
-                    {unreadCount > 0 && (
-                        <Text style={styles.unreadLabel}>{unreadCount} unread</Text>
-                    )}
+                    {unreadCount > 0 && <Text style={styles.unreadLabel}>{unreadCount} unread</Text>}
                 </View>
-                {notifications.length > 0 && (
-                    <View style={styles.headerActions}>
-                        {unreadCount > 0 && (
-                            <TouchableOpacity onPress={markAllAsRead}>
-                                <Text style={styles.actionBtn}>Mark all read</Text>
-                            </TouchableOpacity>
-                        )}
-                        <TouchableOpacity onPress={clearAll}>
-                            <Text style={[styles.actionBtn, styles.clearBtn]}>Clear all</Text>
-                        </TouchableOpacity>
-                    </View>
+                {unreadCount > 0 && (
+                    <TouchableOpacity onPress={markAllAsRead} disabled={markNotificationsRead.isPending}>
+                        <Text style={styles.actionBtn}>
+                            {markNotificationsRead.isPending ? 'Marking...' : 'Mark all read'}
+                        </Text>
+                    </TouchableOpacity>
                 )}
             </View>
 
-            {/* Notifications List */}
             {notifications.length === 0 ? (
                 <View style={styles.emptyState}>
-                    <Text style={styles.emptyIcon}>🔔</Text>
                     <Text style={styles.emptyTitle}>No Notifications</Text>
                     <Text style={styles.emptyText}>
-                        When there's new content or updates, you'll see them here
+                        When there is new content or account activity, it will appear here.
                     </Text>
                 </View>
             ) : (
                 <FlatList
                     data={notifications}
-                    keyExtractor={item => item.id}
+                    keyExtractor={(item) => item.id}
                     renderItem={renderNotification}
                     refreshControl={
                         <RefreshControl
-                            refreshing={refreshing}
+                            refreshing={isRefetching}
                             onRefresh={onRefresh}
                             tintColor="#fff"
                         />
@@ -196,6 +182,16 @@ const styles = StyleSheet.create({
         backgroundColor: '#0d0d0d',
         paddingTop: 60,
     },
+    loadingContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#0d0d0d',
+    },
+    loadingText: {
+        color: '#fff',
+        marginTop: 12,
+    },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -213,16 +209,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginTop: 4,
     },
-    headerActions: {
-        flexDirection: 'row',
-        gap: 16,
-    },
     actionBtn: {
-        color: '#888',
-        fontSize: 14,
-    },
-    clearBtn: {
         color: '#3b82f6',
+        fontSize: 14,
     },
     listContent: {
         paddingBottom: 100,
@@ -235,7 +224,7 @@ const styles = StyleSheet.create({
         borderBottomColor: '#1a1a1a',
     },
     unreadItem: {
-        backgroundColor: 'rgba(229, 9, 20, 0.05)',
+        backgroundColor: 'rgba(59, 130, 246, 0.08)',
     },
     iconContainer: {
         width: 48,
@@ -249,6 +238,8 @@ const styles = StyleSheet.create({
     },
     icon: {
         fontSize: 22,
+        color: '#fff',
+        fontWeight: '700',
     },
     unreadDot: {
         position: 'absolute',
@@ -293,10 +284,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 32,
-    },
-    emptyIcon: {
-        fontSize: 64,
-        marginBottom: 16,
     },
     emptyTitle: {
         color: '#fff',

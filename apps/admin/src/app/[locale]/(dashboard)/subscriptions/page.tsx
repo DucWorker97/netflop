@@ -1,104 +1,138 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
+import { useSubscriptionsOverview } from '@/lib/queries';
 import styles from './subscriptions.module.css';
 
-interface Subscriber {
-    id: string;
-    email: string;
-    name: string;
-    plan: 'FREE' | 'BASIC' | 'PREMIUM';
-    status: 'ACTIVE' | 'CANCELED' | 'PAST_DUE';
-    startDate: string;
-    endDate: string | null;
-    totalPaid: number;
-}
+const FILTERS = ['all', 'free', 'basic', 'premium', 'active', 'canceled', 'past_due'] as const;
 
-const mockSubscribers: Subscriber[] = [
-    { id: '1', email: 'john@example.com', name: 'John Doe', plan: 'PREMIUM', status: 'ACTIVE', startDate: '2026-01-01', endDate: '2026-02-01', totalPaid: 47.97 },
-    { id: '2', email: 'jane@example.com', name: 'Jane Smith', plan: 'BASIC', status: 'ACTIVE', startDate: '2026-01-15', endDate: '2026-02-15', totalPaid: 19.98 },
-    { id: '3', email: 'bob@example.com', name: 'Bob Wilson', plan: 'BASIC', status: 'CANCELED', startDate: '2025-11-01', endDate: '2026-01-01', totalPaid: 19.98 },
-    { id: '4', email: 'alice@example.com', name: 'Alice Brown', plan: 'PREMIUM', status: 'PAST_DUE', startDate: '2025-12-01', endDate: '2026-01-01', totalPaid: 15.99 },
-];
-
-const mockStats = {
-    totalRevenue: 2459.87,
-    monthlyRevenue: 345.67,
-    activeSubscribers: 156,
-    churnRate: 2.3,
-    byPlan: { FREE: 423, BASIC: 98, PREMIUM: 58 },
+const EMPTY_STATS = {
+    totalRevenue: 0,
+    monthlyRevenue: 0,
+    activeSubscribers: 0,
+    churnRate: 0,
+    byPlan: {
+        FREE: 0,
+        BASIC: 0,
+        PREMIUM: 0,
+    },
 };
 
-export default function AdminSubscriptionsPage() {
-    const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
-    const [stats, setStats] = useState(mockStats);
-    const [filter, setFilter] = useState<string>('all');
-    const [search, setSearch] = useState('');
-    const [loading, setLoading] = useState(true);
+function formatDate(dateStr: string | null) {
+    if (!dateStr) return '-';
 
-    useEffect(() => {
-        setTimeout(() => {
-            setSubscribers(mockSubscribers);
-            setLoading(false);
-        }, 500);
-    }, []);
-
-    const filteredSubscribers = subscribers.filter(sub => {
-        const matchesFilter = filter === 'all' || sub.plan.toLowerCase() === filter || sub.status.toLowerCase() === filter;
-        const matchesSearch = sub.email.toLowerCase().includes(search.toLowerCase()) ||
-            sub.name.toLowerCase().includes(search.toLowerCase());
-        return matchesFilter && matchesSearch;
+    return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
     });
+}
 
-    const formatDate = (dateStr: string) => {
-        return new Date(dateStr).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
+function formatCurrency(amount: number) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+    }).format(amount);
+}
+
+function getBarWidth(value: number, total: number) {
+    if (!total) return '0%';
+    return `${(value / total) * 100}%`;
+}
+
+export default function AdminSubscriptionsPage() {
+    const [filter, setFilter] = useState<(typeof FILTERS)[number]>('all');
+    const [search, setSearch] = useState('');
+    const deferredSearch = useDeferredValue(search);
+    const { data, isLoading, error } = useSubscriptionsOverview();
+
+    const subscribers = useMemo(() => data?.subscribers ?? [], [data?.subscribers]);
+    const stats = data?.stats ?? EMPTY_STATS;
+    const totalByPlan = stats.byPlan.FREE + stats.byPlan.BASIC + stats.byPlan.PREMIUM;
+
+    const filteredSubscribers = useMemo(() => {
+        const searchValue = deferredSearch.trim().toLowerCase();
+
+        return subscribers.filter((subscriber) => {
+            const matchesFilter =
+                filter === 'all' ||
+                subscriber.plan.toLowerCase() === filter ||
+                subscriber.status.toLowerCase() === filter;
+            const matchesSearch =
+                !searchValue ||
+                subscriber.email.toLowerCase().includes(searchValue) ||
+                subscriber.name.toLowerCase().includes(searchValue);
+
+            return matchesFilter && matchesSearch;
         });
-    };
+    }, [deferredSearch, filter, subscribers]);
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-        }).format(amount);
-    };
+    function exportCsv() {
+        if (subscribers.length === 0) return;
+
+        const header = ['Name', 'Email', 'Plan', 'Status', 'Start Date', 'End Date', 'Total Paid'];
+        const rows = subscribers.map((subscriber) => [
+            subscriber.name,
+            subscriber.email,
+            subscriber.plan,
+            subscriber.status,
+            subscriber.startDate,
+            subscriber.endDate ?? '',
+            subscriber.totalPaid.toFixed(2),
+        ]);
+
+        const csvContent = [header, ...rows]
+            .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+
+        link.href = url;
+        link.download = 'subscriptions.csv';
+        link.click();
+
+        window.URL.revokeObjectURL(url);
+    }
 
     return (
         <div className={styles.container}>
             <div className={styles.header}>
                 <h1>Subscriptions</h1>
-                <button className={styles.exportBtn}>
-                    📥 Export CSV
+                <button
+                    className={styles.exportBtn}
+                    onClick={exportCsv}
+                    disabled={subscribers.length === 0}
+                >
+                    Export CSV
                 </button>
             </div>
 
-            {/* Stats Cards */}
             <div className={styles.statsGrid}>
                 <div className={styles.statCard}>
-                    <span className={styles.statIcon}>💰</span>
+                    <span className={styles.statIcon}>$</span>
                     <div className={styles.statInfo}>
                         <span className={styles.statValue}>{formatCurrency(stats.totalRevenue)}</span>
                         <span className={styles.statLabel}>Total Revenue</span>
                     </div>
                 </div>
                 <div className={styles.statCard}>
-                    <span className={styles.statIcon}>📈</span>
+                    <span className={styles.statIcon}>M</span>
                     <div className={styles.statInfo}>
                         <span className={styles.statValue}>{formatCurrency(stats.monthlyRevenue)}</span>
                         <span className={styles.statLabel}>This Month</span>
                     </div>
                 </div>
                 <div className={styles.statCard}>
-                    <span className={styles.statIcon}>👥</span>
+                    <span className={styles.statIcon}>U</span>
                     <div className={styles.statInfo}>
                         <span className={styles.statValue}>{stats.activeSubscribers}</span>
                         <span className={styles.statLabel}>Active Subscribers</span>
                     </div>
                 </div>
                 <div className={styles.statCard}>
-                    <span className={styles.statIcon}>📉</span>
+                    <span className={styles.statIcon}>%</span>
                     <div className={styles.statInfo}>
                         <span className={styles.statValue}>{stats.churnRate}%</span>
                         <span className={styles.statLabel}>Churn Rate</span>
@@ -106,7 +140,6 @@ export default function AdminSubscriptionsPage() {
                 </div>
             </div>
 
-            {/* Plan Distribution */}
             <div className={styles.distributionCard}>
                 <h3>Subscribers by Plan</h3>
                 <div className={styles.planBars}>
@@ -118,7 +151,7 @@ export default function AdminSubscriptionsPage() {
                         <div className={styles.barTrack}>
                             <div
                                 className={`${styles.barFill} ${styles.free}`}
-                                style={{ width: `${(stats.byPlan.FREE / (stats.byPlan.FREE + stats.byPlan.BASIC + stats.byPlan.PREMIUM)) * 100}%` }}
+                                style={{ width: getBarWidth(stats.byPlan.FREE, totalByPlan) }}
                             />
                         </div>
                     </div>
@@ -130,7 +163,7 @@ export default function AdminSubscriptionsPage() {
                         <div className={styles.barTrack}>
                             <div
                                 className={`${styles.barFill} ${styles.basic}`}
-                                style={{ width: `${(stats.byPlan.BASIC / (stats.byPlan.FREE + stats.byPlan.BASIC + stats.byPlan.PREMIUM)) * 100}%` }}
+                                style={{ width: getBarWidth(stats.byPlan.BASIC, totalByPlan) }}
                             />
                         </div>
                     </div>
@@ -142,23 +175,22 @@ export default function AdminSubscriptionsPage() {
                         <div className={styles.barTrack}>
                             <div
                                 className={`${styles.barFill} ${styles.premium}`}
-                                style={{ width: `${(stats.byPlan.PREMIUM / (stats.byPlan.FREE + stats.byPlan.BASIC + stats.byPlan.PREMIUM)) * 100}%` }}
+                                style={{ width: getBarWidth(stats.byPlan.PREMIUM, totalByPlan) }}
                             />
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Filters & Search */}
             <div className={styles.toolbar}>
                 <div className={styles.filters}>
-                    {['all', 'basic', 'premium', 'active', 'canceled'].map(f => (
+                    {FILTERS.map((value) => (
                         <button
-                            key={f}
-                            className={`${styles.filterBtn} ${filter === f ? styles.filterActive : ''}`}
-                            onClick={() => setFilter(f)}
+                            key={value}
+                            className={`${styles.filterBtn} ${filter === value ? styles.filterActive : ''}`}
+                            onClick={() => setFilter(value)}
                         >
-                            {f.charAt(0).toUpperCase() + f.slice(1)}
+                            {value.replace('_', ' ')}
                         </button>
                     ))}
                 </div>
@@ -166,15 +198,20 @@ export default function AdminSubscriptionsPage() {
                     type="text"
                     placeholder="Search by email or name..."
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(event) => setSearch(event.target.value)}
                     className={styles.searchInput}
                 />
             </div>
 
-            {/* Subscribers Table */}
             <div className={styles.tableContainer}>
-                {loading ? (
-                    <div className={styles.loading}>Loading...</div>
+                {isLoading ? (
+                    <div className={styles.loading}>Loading subscriptions...</div>
+                ) : error ? (
+                    <div className={styles.loading}>
+                        {error instanceof Error ? error.message : 'Failed to load subscriptions'}
+                    </div>
+                ) : filteredSubscribers.length === 0 ? (
+                    <div className={styles.loading}>No subscribers match the current filters.</div>
                 ) : (
                     <table className={styles.table}>
                         <thead>
@@ -188,32 +225,36 @@ export default function AdminSubscriptionsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredSubscribers.map(sub => (
-                                <tr key={sub.id}>
+                            {filteredSubscribers.map((subscriber) => (
+                                <tr key={subscriber.id}>
                                     <td>
                                         <div className={styles.userCell}>
                                             <div className={styles.avatar}>
-                                                {sub.name.charAt(0)}
+                                                {subscriber.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
-                                                <div className={styles.userName}>{sub.name}</div>
-                                                <div className={styles.userEmail}>{sub.email}</div>
+                                                <div className={styles.userName}>{subscriber.name}</div>
+                                                <div className={styles.userEmail}>{subscriber.email}</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        <span className={`${styles.planBadge} ${styles[sub.plan.toLowerCase()]}`}>
-                                            {sub.plan}
+                                        <span
+                                            className={`${styles.planBadge} ${styles[subscriber.plan.toLowerCase()]}`}
+                                        >
+                                            {subscriber.plan}
                                         </span>
                                     </td>
                                     <td>
-                                        <span className={`${styles.statusBadge} ${styles[sub.status.toLowerCase().replace('_', '')]}`}>
-                                            {sub.status.replace('_', ' ')}
+                                        <span
+                                            className={`${styles.statusBadge} ${styles[subscriber.status.toLowerCase().replace('_', '')]}`}
+                                        >
+                                            {subscriber.status.replace('_', ' ')}
                                         </span>
                                     </td>
-                                    <td>{formatDate(sub.startDate)}</td>
-                                    <td>{sub.endDate ? formatDate(sub.endDate) : '—'}</td>
-                                    <td>{formatCurrency(sub.totalPaid)}</td>
+                                    <td>{formatDate(subscriber.startDate)}</td>
+                                    <td>{formatDate(subscriber.endDate)}</td>
+                                    <td>{formatCurrency(subscriber.totalPaid)}</td>
                                 </tr>
                             ))}
                         </tbody>

@@ -39,7 +39,7 @@ export default function TabsLayout() {
                 options={{
                     title: 'Home',
                     headerShown: false,
-                    tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
+                    tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon name="home" focused={focused} />,
                 }}
             />
             <Tabs.Screen
@@ -47,7 +47,7 @@ export default function TabsLayout() {
                 options={{
                     title: 'Search',
                     headerShown: false,
-                    tabBarIcon: ({ focused }) => <TabIcon name="search" focused={focused} />,
+                    tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon name="search" focused={focused} />,
                 }}
             />
             <Tabs.Screen
@@ -55,7 +55,7 @@ export default function TabsLayout() {
                 options={{
                     title: 'My List',
                     headerShown: false,
-                    tabBarIcon: ({ focused }) => <TabIcon name="list" focused={focused} />,
+                    tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon name="list" focused={focused} />,
                 }}
             />
             <Tabs.Screen
@@ -63,7 +63,7 @@ export default function TabsLayout() {
                 options={{
                     title: 'History',
                     headerShown: false,
-                    tabBarIcon: ({ focused }) => <TabIcon name="history" focused={focused} />,
+                    tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon name="history" focused={focused} />,
                 }}
             />
             <Tabs.Screen
@@ -71,7 +71,7 @@ export default function TabsLayout() {
                 options={{
                     title: 'Downloads',
                     headerShown: false,
-                    tabBarIcon: ({ focused }) => <TabIcon name="downloads" focused={focused} />,
+                    tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon name="downloads" focused={focused} />,
                 }}
             />
             <Tabs.Screen
@@ -79,7 +79,7 @@ export default function TabsLayout() {
                 options={{
                     title: 'Alerts',
                     headerShown: false,
-                    tabBarIcon: ({ focused }) => <TabIcon name="notifications" focused={focused} />,
+                    tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon name="notifications" focused={focused} />,
                 }}
             />
             <Tabs.Screen
@@ -87,7 +87,7 @@ export default function TabsLayout() {
                 options={{
                     title: 'Settings',
                     headerShown: false,
-                    tabBarIcon: ({ focused }) => <TabIcon name="settings" focused={focused} />,
+                    tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon name="settings" focused={focused} />,
                 }}
             />
         </Tabs>

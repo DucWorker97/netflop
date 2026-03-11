@@ -1,54 +1,65 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import styles from './notifications.module.css';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FeatureDisabled } from '@/components/FeatureDisabled';
 import { FEATURE_FLAGS } from '@/lib/feature-flags';
-import { api } from '@/lib/axios';
-import { useState } from 'react';
+import { api } from '@/lib/api';
+import styles from './notifications.module.css';
 
-// Models matching API
 interface Notification {
     id: string;
     type: 'INFO' | 'ALERT' | 'NEW_MOVIE';
     title: string;
     message: string;
-    movieId?: string;
-    createdAt: string; // ISO
+    movieId: string | null;
+    createdAt: string;
     isRead: boolean;
 }
 
 export default function NotificationsPage() {
+    if (!FEATURE_FLAGS.notifications) {
+        return (
+            <FeatureDisabled
+                title="Notifications paused"
+                message="Notifications will return after core features are complete."
+            />
+        );
+    }
+
+    return <NotificationsContent />;
+}
+
+function NotificationsContent() {
     const queryClient = useQueryClient();
     const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
     const { data: notifications = [], isLoading } = useQuery<Notification[]>({
         queryKey: ['notifications'],
-        queryFn: async () => {
-            const { data } = await api.get('/notifications');
-            return data;
-        },
-        refetchInterval: 10000, // Poll every 10s
+        queryFn: () => api.get<Notification[]>('/api/notifications'),
+        refetchInterval: 10000,
     });
 
     const markAsReadMutation = useMutation({
-        mutationFn: async (id: string) => {
-            await api.patch(`/notifications/${id}/read`);
-        },
+        mutationFn: (id: string) => api.patch<Notification>(`/api/notifications/${id}/read`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
         },
     });
 
-    if (!FEATURE_FLAGS.notifications) {
-        return <FeatureDisabled title="Notifications paused" message="Notifications will return after core features are complete." />;
-    }
+    const unreadCount = useMemo(
+        () => notifications.filter((notification) => !notification.isRead).length,
+        [notifications]
+    );
 
-    const unreadCount = notifications.filter(n => !n.isRead).length;
-    const filteredNotifications = filter === 'unread'
-        ? notifications.filter(n => !n.isRead)
-        : notifications;
+    const filteredNotifications = useMemo(() => {
+        if (filter === 'unread') {
+            return notifications.filter((notification) => !notification.isRead);
+        }
+
+        return notifications;
+    }, [filter, notifications]);
 
     const handleMarkAsRead = (id: string, isRead: boolean) => {
         if (!isRead) {
@@ -57,19 +68,19 @@ export default function NotificationsPage() {
     };
 
     const markAllAsRead = () => {
-        // Implement bulk read if API supported, for now just iterate client side or ignore unique ID rq
-        // Since we only have single ID endpoint, we'll just invalidate for now or skip
-        // Ideally: POST /notifications/read-all
-        // For MVP, button visually clears or we loop:
-        notifications.filter(n => !n.isRead).forEach(n => markAsReadMutation.mutate(n.id));
+        notifications
+            .filter((notification) => !notification.isRead)
+            .forEach((notification) => markAsReadMutation.mutate(notification.id));
     };
 
-    const getIcon = (type: string) => {
+    const getIconLabel = (type: Notification['type']) => {
         switch (type) {
-            case 'NEW_MOVIE': return '🎬';
-            case 'ALERT': return '⚠️';
-            case 'INFO': return '🔔';
-            default: return '📢';
+            case 'NEW_MOVIE':
+                return 'New';
+            case 'ALERT':
+                return 'Alert';
+            default:
+                return 'Info';
         }
     };
 
@@ -81,7 +92,7 @@ export default function NotificationsPage() {
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
 
-        if (diffMins < 60) return `${diffMins} minutes ago`;
+        if (diffMins < 60) return `${Math.max(diffMins, 1)} minutes ago`;
         if (diffHours < 24) return `${diffHours} hours ago`;
         if (diffDays < 7) return `${diffDays} days ago`;
         return date.toLocaleDateString();
@@ -93,14 +104,12 @@ export default function NotificationsPage() {
 
     return (
         <div className={styles.container}>
-            {/* Navbar */}
             <nav className={styles.navbar}>
                 <Link href="/" className={styles.logo}>NETFLOP</Link>
-                <Link href="/" className={styles.backLink}>← Back to Browse</Link>
+                <Link href="/" className={styles.backLink}>Back to Browse</Link>
             </nav>
 
             <main className={styles.main}>
-                {/* Header */}
                 <div className={styles.header}>
                     <div>
                         <h1 className={styles.title}>Notifications</h1>
@@ -117,7 +126,6 @@ export default function NotificationsPage() {
                     </div>
                 </div>
 
-                {/* Filter Tabs */}
                 <div className={styles.filterTabs}>
                     <button
                         className={`${styles.filterTab} ${filter === 'all' ? styles.filterActive : ''}`}
@@ -133,12 +141,15 @@ export default function NotificationsPage() {
                     </button>
                 </div>
 
-                {/* Notifications List */}
                 {filteredNotifications.length === 0 ? (
                     <div className={styles.empty}>
-                        <span className={styles.emptyIcon}>🔔</span>
+                        <span className={styles.emptyIcon}>Info</span>
                         <h3>No notifications</h3>
-                        <p>{filter === 'unread' ? "You're all caught up!" : "When there's something new, you'll see it here"}</p>
+                        <p>
+                            {filter === 'unread'
+                                ? "You're all caught up!"
+                                : "When there is something new, you'll see it here."}
+                        </p>
                     </div>
                 ) : (
                     <div className={styles.list}>
@@ -148,7 +159,7 @@ export default function NotificationsPage() {
                                 className={`${styles.item} ${!notification.isRead ? styles.itemUnread : ''}`}
                                 onClick={() => handleMarkAsRead(notification.id, notification.isRead)}
                             >
-                                <div className={styles.icon}>{getIcon(notification.type)}</div>
+                                <div className={styles.icon}>{getIconLabel(notification.type)}</div>
                                 <div className={styles.content}>
                                     <h3 className={styles.itemTitle}>{notification.title}</h3>
                                     <p className={styles.itemMessage}>{notification.message}</p>
@@ -158,9 +169,9 @@ export default function NotificationsPage() {
                                     <Link
                                         href={`/movies/${notification.movieId}`}
                                         className={styles.viewBtn}
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={(event) => event.stopPropagation()}
                                     >
-                                        View →
+                                        View
                                     </Link>
                                 )}
                                 {!notification.isRead && <div className={styles.unreadDot} />}

@@ -22,7 +22,7 @@ import { getMovieStatus, getMovieInfo, claimJob, markReady, markFailed, updatePo
 /**
  * Structured logger
  */
-function logEvent(event: string, context: Record<string, any>, message?: string) {
+function logEvent(event: string, context: Record<string, unknown>, message?: string) {
     console.log(JSON.stringify({
         timestamp: new Date().toISOString(),
         service: 'worker',
@@ -40,7 +40,7 @@ export async function processEncodeJob(job: Job<EncodeJobData>): Promise<void> {
     const startTime = Date.now();
     const jobId = job.id || 'unknown';
     // Attempt to parse requestId even if validation fails later
-    const rawData = job.data as any;
+    const rawData = job.data as Record<string, unknown>;
     const requestId = rawData.requestId || 'unknown';
     const baseContext = { jobId, requestId, queue: 'encode' };
 

@@ -46,14 +46,11 @@ Correlate API and Worker logs using `requestId`.
 # 1. Install dependencies
 pnpm install
 
-# 2. Start infrastructure (Docker)
-pnpm infra:up
+# 2. Run preflight checks (env/ports/infra readiness)
+pnpm dev:runtime:doctor
 
-# 3. Run database migrations
-pnpm db:migrate:deploy
-
-# 4. Start all core services
-pnpm dev:core
+# 3. Start runtime (API -> Worker -> Web -> Mobile)
+pnpm dev:runtime:start
 ```
 
 ### Available Scripts
@@ -65,6 +62,12 @@ pnpm dev:core
 | `pnpm dev:web` | Use `.env.web.local` profile then start core services |
 | `pnpm dev:mobile:emu` | Use `.env.mobile.emu` profile then start core services |
 | `pnpm dev:lan` | Use `.env.lan.local` profile then start core services |
+| `pnpm dev:runtime:doctor` | Run startup preflight checks for dual-platform mode |
+| `pnpm dev:runtime:start` | Start managed runtime in dual mode with health gates |
+| `pnpm dev:runtime:web` | Start managed runtime in web-only mode |
+| `pnpm dev:runtime:mobile` | Start managed runtime in mobile-only mode |
+| `pnpm dev:runtime:status` | Show managed runtime process status |
+| `pnpm dev:runtime:stop` | Stop managed runtime processes |
 | `pnpm mobile:start` | Start Expo Metro bundler only |
 | `pnpm mobile:fix` | Fix Expo dependency mismatches |
 | `pnpm kill:ports` | Kill processes on ports 3000, 8081, 9000 |

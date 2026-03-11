@@ -16,7 +16,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RecommendationsService } from './recommendations.service';
 import { PrismaService } from '../prisma/prisma.service';
 
-@Controller('api/recommendations')
+@Controller('recommendations')
 export class RecommendationsController {
     constructor(
         private readonly recommendationsService: RecommendationsService,

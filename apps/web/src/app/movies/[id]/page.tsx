@@ -78,7 +78,7 @@ export default function MovieDetailPage() {
                 <div className="empty-state">
                     <h3>Movie not found</h3>
                     <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                        The movie you're looking for doesn't exist or has been removed.
+                        The movie you&apos;re looking for doesn&apos;t exist or has been removed.
                     </p>
                     <Link href="/" className="btn btn-primary" style={{ marginTop: '1rem' }}>
                         Back to Home
@@ -116,6 +116,9 @@ export default function MovieDetailPage() {
     };
 
     const subtitleUrl = buildMediaUrl(movie.subtitleUrl);
+    const tmdbVoteAverage = typeof movie.voteAverage === 'number' && movie.voteAverage > 0
+        ? movie.voteAverage
+        : null;
     const subtitleTracks = subtitleUrl
         ? [{
             id: 'default',
@@ -219,9 +222,9 @@ export default function MovieDetailPage() {
                             <span style={{ textTransform: 'uppercase' }}>{movie.originalLanguage}</span>
                         )}
                         {/* TMDb Rating Badge */}
-                        {movie.voteAverage > 0 && (
+                        {tmdbVoteAverage !== null && (
                             <span className={styles.tmdbRating} title={`${movie.voteCount?.toLocaleString() || 0} votes on TMDb`}>
-                                ⭐ {movie.voteAverage.toFixed(1)}/10
+                                ⭐ {tmdbVoteAverage.toFixed(1)}/10
                             </span>
                         )}
                         {/* Trailer Button */}

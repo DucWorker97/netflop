@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
+import { PASSWORD_REQUIREMENTS_HINT, getPasswordValidationError } from '@/lib/security';
 import styles from './account.module.css';
 
 interface AccountData {
@@ -90,6 +91,13 @@ export default function AccountPage() {
             alert('Passwords do not match');
             return;
         }
+
+        const passwordError = getPasswordValidationError(newPassword);
+        if (passwordError) {
+            alert(passwordError);
+            return;
+        }
+
         try {
             setSaving(true);
             await api.post('/api/account/change-password', { currentPassword, newPassword });
@@ -495,6 +503,7 @@ export default function AccountPage() {
                                 placeholder="New password"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
+                                minLength={8}
                                 className={styles.input}
                             />
                             <input
@@ -502,8 +511,10 @@ export default function AccountPage() {
                                 placeholder="Confirm new password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
+                                minLength={8}
                                 className={styles.input}
                             />
+                            <p className={styles.muted}>{PASSWORD_REQUIREMENTS_HINT}</p>
                             <button onClick={handleChangePassword} disabled={saving} className={styles.saveBtn}>
                                 {saving ? 'Changing...' : 'Change Password'}
                             </button>

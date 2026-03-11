@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { assertStrongPassword, normalizeEmail } from '../common/utils/security';
 
 export interface AccountOverview {
     user: {
@@ -118,12 +119,15 @@ export class AccountService {
      */
     async updateProfile(userId: string, data: { email?: string }) {
         if (data.email) {
+            const normalizedEmail = normalizeEmail(data.email);
             const existing = await this.prisma.user.findUnique({
-                where: { email: data.email },
+                where: { email: normalizedEmail },
             });
             if (existing && existing.id !== userId) {
                 throw new BadRequestException('Email already in use');
             }
+
+            data.email = normalizedEmail;
         }
 
         return this.prisma.user.update({
@@ -150,15 +154,19 @@ export class AccountService {
             throw new BadRequestException('Current password is incorrect');
         }
 
-        if (newPassword.length < 8) {
-            throw new BadRequestException('Password must be at least 8 characters');
-        }
+        assertStrongPassword(newPassword);
 
         const newHash = await bcrypt.hash(newPassword, 10);
-        await this.prisma.user.update({
-            where: { id: userId },
-            data: { passwordHash: newHash },
-        });
+        await this.prisma.$transaction([
+            this.prisma.user.update({
+                where: { id: userId },
+                data: { passwordHash: newHash },
+            }),
+            this.prisma.refreshToken.updateMany({
+                where: { userId, revoked: false },
+                data: { revoked: true },
+            }),
+        ]);
 
         return { success: true };
     }

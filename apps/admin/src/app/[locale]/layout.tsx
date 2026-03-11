@@ -1,17 +1,8 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
-import '../globals.css';
+import { notFound } from 'next/navigation';
 import { QueryProvider } from '@/lib/query-provider';
 import { AuthProvider } from '@/lib/auth-context';
-
-const inter = Inter({ subsets: ['latin'] });
-
-export const metadata: Metadata = {
-    title: 'Netflop Admin',
-    description: 'Admin CMS for Netflop',
-};
 
 export default async function LocaleLayout({
     children,
@@ -21,22 +12,19 @@ export default async function LocaleLayout({
     params: Promise<{ locale: string }>;
 }) {
     const { locale } = await params;
+    if (!['vi', 'en'].includes(locale)) {
+        notFound();
+    }
 
-    // Providing all messages to the client
-    // side is the easiest way to get started
     const messages = await getMessages();
 
     return (
-        <html lang={locale} suppressHydrationWarning>
-            <body className={inter.className} suppressHydrationWarning>
-                <NextIntlClientProvider messages={messages}>
-                    <QueryProvider>
-                        <AuthProvider>
-                            {children}
-                        </AuthProvider>
-                    </QueryProvider>
-                </NextIntlClientProvider>
-            </body>
-        </html>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+            <QueryProvider>
+                <AuthProvider>
+                    {children}
+                </AuthProvider>
+            </QueryProvider>
+        </NextIntlClientProvider>
     );
 }

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import styles from './users.module.css';
 import { api } from '@/lib/api';
+import { getPasswordValidationError } from '@/lib/security';
 
 interface User {
     id: string;
@@ -43,7 +44,7 @@ export default function UsersPage() {
     const [formError, setFormError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -67,11 +68,11 @@ export default function UsersPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentPage, roleFilter, searchQuery]);
 
     useEffect(() => {
         fetchUsers();
-    }, [currentPage, searchQuery, roleFilter]);
+    }, [fetchUsers]);
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return 'Never';
@@ -124,6 +125,14 @@ export default function UsersPage() {
         if (!editingUser && !payload.password) {
             setFormError('Password is required for new users');
             return;
+        }
+
+        if (payload.password) {
+            const passwordError = getPasswordValidationError(payload.password);
+            if (passwordError) {
+                setFormError(passwordError);
+                return;
+            }
         }
 
         if (editingUser) {
@@ -356,7 +365,11 @@ export default function UsersPage() {
                                 className="input"
                                 value={formState.password}
                                 onChange={(e) => setFormState(prev => ({ ...prev, password: e.target.value }))}
-                                placeholder={editingUser ? 'Leave blank to keep current password' : 'At least 6 characters'}
+                                placeholder={
+                                    editingUser
+                                        ? 'Leave blank to keep current password'
+                                        : 'At least 8 characters with letters and numbers'
+                                }
                             />
                         </div>
 

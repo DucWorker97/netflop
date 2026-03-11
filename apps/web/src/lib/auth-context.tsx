@@ -10,12 +10,25 @@ interface User {
     role: string;
 }
 
+interface ForgotPasswordResult {
+    message: string;
+    resetToken?: string;
+    resetUrl?: string;
+    expiresAt?: string;
+}
+
+interface PasswordActionResult {
+    message: string;
+}
+
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-    login: (email: string, password: string) => Promise<void>;
-    register: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string, redirectTo?: string) => Promise<void>;
+    register: (email: string, password: string, redirectTo?: string) => Promise<void>;
+    forgotPassword: (email: string) => Promise<ForgotPasswordResult>;
+    resetPassword: (token: string, newPassword: string) => Promise<PasswordActionResult>;
     logout: () => void;
 }
 
@@ -42,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         checkAuth();
     }, []);
 
-    const login = async (email: string, password: string) => {
+    const login = async (email: string, password: string, redirectTo = '/') => {
         interface LoginResponse {
             data: {
                 accessToken: string;
@@ -54,10 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await api.post<LoginResponse>('/api/auth/login', { email, password });
         api.setTokens(res.data.accessToken, res.data.refreshToken);
         setUser(res.data.user);
-        router.push('/');
+        router.push(redirectTo);
     };
 
-    const register = async (email: string, password: string) => {
+    const register = async (email: string, password: string, redirectTo = '/') => {
         interface RegisterResponse {
             data: {
                 accessToken: string;
@@ -69,7 +82,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await api.post<RegisterResponse>('/api/auth/register', { email, password });
         api.setTokens(res.data.accessToken, res.data.refreshToken);
         setUser(res.data.user);
-        router.push('/');
+        router.push(redirectTo);
+    };
+
+    const forgotPassword = async (email: string) => {
+        const res = await api.post<{ data: ForgotPasswordResult }>('/api/auth/forgot-password', { email });
+        return res.data;
+    };
+
+    const resetPassword = async (token: string, newPassword: string) => {
+        const res = await api.post<{ data: PasswordActionResult }>('/api/auth/reset-password', {
+            token,
+            newPassword,
+        });
+        return res.data;
     };
 
     const logout = () => {
@@ -86,6 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 isAuthenticated: !!user,
                 login,
                 register,
+                forgotPassword,
+                resetPassword,
                 logout,
             }}
         >

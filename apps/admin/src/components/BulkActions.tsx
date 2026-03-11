@@ -10,22 +10,14 @@ interface Movie {
     encodeStatus: 'pending' | 'processing' | 'ready' | 'failed';
 }
 
-const mockMovies: Movie[] = [
-    { id: '1', title: 'Dune: Part Two', status: 'published', encodeStatus: 'ready' },
-    { id: '2', title: 'Oppenheimer', status: 'published', encodeStatus: 'ready' },
-    { id: '3', title: 'The Batman', status: 'draft', encodeStatus: 'pending' },
-    { id: '4', title: 'Spider-Man: No Way Home', status: 'published', encodeStatus: 'ready' },
-    { id: '5', title: 'Top Gun: Maverick', status: 'draft', encodeStatus: 'failed' },
-];
-
 type BulkAction = 'publish' | 'unpublish' | 'delete' | 'reencode';
 
 interface BulkActionsProps {
-    movies?: Movie[];
+    movies: Movie[];
     onAction?: (action: BulkAction, ids: string[]) => void;
 }
 
-export function BulkActions({ movies = mockMovies, onAction }: BulkActionsProps) {
+export function BulkActions({ movies, onAction }: BulkActionsProps) {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showConfirm, setShowConfirm] = useState<BulkAction | null>(null);
 

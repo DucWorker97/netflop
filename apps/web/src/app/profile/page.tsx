@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { PASSWORD_REQUIREMENTS_HINT, getPasswordValidationError } from '@/lib/security';
 
 interface UserProfile {
     id: string;
@@ -63,8 +64,9 @@ export default function ProfilePage() {
             return;
         }
 
-        if (newPassword.length < 6) {
-            setPasswordError('Password must be at least 6 characters');
+        const passwordError = getPasswordValidationError(newPassword);
+        if (passwordError) {
+            setPasswordError(passwordError);
             return;
         }
 
@@ -216,7 +218,7 @@ export default function ProfilePage() {
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
                                 required
-                                minLength={6}
+                                minLength={8}
                                 style={{
                                     width: '100%',
                                     padding: '0.75rem',
@@ -238,7 +240,7 @@ export default function ProfilePage() {
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 required
-                                minLength={6}
+                                minLength={8}
                                 style={{
                                     width: '100%',
                                     padding: '0.75rem',
@@ -249,6 +251,10 @@ export default function ProfilePage() {
                                     fontSize: '1rem'
                                 }}
                             />
+                        </div>
+
+                        <div style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                            {PASSWORD_REQUIREMENTS_HINT}
                         </div>
 
                         {passwordError && (

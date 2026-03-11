@@ -2,7 +2,12 @@ import { Controller, Get, Put, Post, Delete, Body, UseGuards } from '@nestjs/com
 import { AccountService } from './account.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import {
+    MIN_PASSWORD_LENGTH,
+    PASSWORD_POLICY_MESSAGE,
+    PASSWORD_POLICY_REGEX,
+} from '../common/utils/security';
 
 class UpdateProfileDto {
     @IsEmail()
@@ -15,7 +20,8 @@ class ChangePasswordDto {
     currentPassword!: string;
 
     @IsString()
-    @MinLength(8)
+    @MinLength(MIN_PASSWORD_LENGTH)
+    @Matches(PASSWORD_POLICY_REGEX, { message: PASSWORD_POLICY_MESSAGE })
     newPassword!: string;
 }
 

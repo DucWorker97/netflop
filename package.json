@@ -35,11 +35,21 @@
         "dev:web": "node scripts/use-env.js .env.web.local && pnpm dev:core",
         "dev:mobile:emu": "node scripts/use-env.js .env.mobile.emu && pnpm dev:core",
         "dev:lan": "node scripts/use-env.js .env.lan.local && pnpm dev:core",
+        "dev:runtime:doctor": "node scripts/dev-runtime.js doctor --mode dual",
+        "dev:runtime:start": "node scripts/dev-runtime.js start --mode dual --force-ports",
+        "dev:runtime:web": "node scripts/dev-runtime.js start --mode web --force-ports",
+        "dev:runtime:mobile": "node scripts/dev-runtime.js start --mode mobile --force-ports",
+        "dev:runtime:stop": "node scripts/dev-runtime.js stop",
+        "dev:runtime:status": "node scripts/dev-runtime.js status",
         "kill:ports": "npx kill-port 3000 8081 9000 || true",
         "mobile:start": "pnpm --filter @netflop/mobile start",
         "mobile:fix": "cd apps/mobile && npx expo install --fix",
         "check:mojibake": "node scripts/check-mojibake.js",
         "fix:mojibake": "node scripts/fix-mojibake.js"
+    },
+    "dependencies": {
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0"
     },
     "devDependencies": {
         "@types/node": "^20.11.0",

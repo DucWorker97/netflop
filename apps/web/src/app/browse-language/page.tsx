@@ -37,10 +37,6 @@ const LANGUAGES = [
 const REGIONS = ['All', 'Asia', 'Europe', 'Americas', 'Middle East'];
 
 export default function BrowseByLanguagePage() {
-    if (!FEATURE_FLAGS.browseLanguage) {
-        return <FeatureDisabled title="Browse by language paused" message="We are focusing on core playback and upload." />;
-    }
-
     const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
     const [regionFilter, setRegionFilter] = useState('All');
 
@@ -54,6 +50,10 @@ export default function BrowseByLanguagePage() {
         },
         enabled: !!selectedLanguage,
     });
+
+    if (!FEATURE_FLAGS.browseLanguage) {
+        return <FeatureDisabled title="Browse by language paused" message="We are focusing on core playback and upload." />;
+    }
 
     const filteredLanguages = LANGUAGES.filter(
         lang => regionFilter === 'All' || lang.region === regionFilter

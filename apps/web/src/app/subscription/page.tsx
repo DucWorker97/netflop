@@ -217,7 +217,7 @@ export default function SubscriptionPage() {
                             period on <strong>{subscription?.endDate ? formatDate(subscription.endDate) : 'N/A'}</strong>.
                         </p>
                         <p className={styles.warning}>
-                            After cancellation, you'll lose access to:
+                            After cancellation, you&apos;ll lose access to:
                         </p>
                         <ul className={styles.lossList}>
                             <li>HD/4K streaming quality</li>

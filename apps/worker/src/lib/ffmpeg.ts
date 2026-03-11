@@ -218,7 +218,7 @@ export async function verifyHlsOutput(outDir: string): Promise<boolean> {
         }
         console.log('✅ HLS output verified');
         return true;
-    } catch (err) {
+    } catch {
         console.error('❌ Master playlist not found');
         return false;
     }

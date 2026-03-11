@@ -663,9 +663,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 20,
     },
-    subtitleBtnActive: {
-        backgroundColor: '#3b82f6',
-    },
     qualityOptionSelected: {
         backgroundColor: '#3b82f6',
     },

@@ -41,7 +41,7 @@ export async function getMovieStatus(movieId: string) {
  * Atomically claim a job for processing (PENDING -> PROCESSING)
  * Returns true if claimed successfully, false if already claimed by another worker
  */
-export async function claimJob(movieId: string, jobId?: string): Promise<boolean> {
+export async function claimJob(movieId: string, _jobId?: string): Promise<boolean> {
     const db = getPrisma();
 
     try {

@@ -7,6 +7,7 @@ import Redis from 'ioredis';
 import { S3Client, HeadBucketCommand } from '@aws-sdk/client-s3';
 import * as bcrypt from 'bcrypt';
 import { UserRole } from '@prisma/client';
+import { assertStrongPassword, normalizeEmail } from '../common/utils/security';
 
 @Injectable()
 export class AdminService {
@@ -212,11 +213,90 @@ export class AdminService {
         };
     }
 
+    async getSubscriptionsOverview() {
+        const users = await this.prisma.user.findMany({
+            include: {
+                profiles: {
+                    orderBy: { createdAt: 'asc' },
+                    take: 1,
+                    select: { name: true },
+                },
+                subscription: {
+                    include: {
+                        payments: {
+                            orderBy: { createdAt: 'desc' },
+                        },
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const subscribers = users.map((user) => {
+            const subscription = user.subscription;
+            const successfulPayments = subscription?.payments.filter((payment) => payment.status === 'SUCCESS') || [];
+            const totalPaid = successfulPayments.reduce((sum, payment) => sum + payment.amount, 0);
+            const monthlyPaid = successfulPayments
+                .filter((payment) => payment.createdAt >= startOfMonth)
+                .reduce((sum, payment) => sum + payment.amount, 0);
+
+            return {
+                id: user.id,
+                email: user.email,
+                name: user.profiles[0]?.name || user.email.split('@')[0],
+                plan: subscription?.plan || 'FREE',
+                status: subscription?.status || 'ACTIVE',
+                startDate: (subscription?.startDate || user.createdAt).toISOString(),
+                endDate: subscription?.endDate?.toISOString() || null,
+                totalPaid,
+                monthlyPaid,
+            };
+        });
+
+        const monthlyRevenue = subscribers.reduce((sum, subscriber) => sum + subscriber.monthlyPaid, 0);
+
+        const totalRevenue = subscribers.reduce((sum, subscriber) => sum + subscriber.totalPaid, 0);
+        const paidSubscribers = subscribers.filter((subscriber) => subscriber.plan !== 'FREE');
+        const activeSubscribers = paidSubscribers.filter(
+            (subscriber) => subscriber.status === 'ACTIVE' || subscriber.status === 'PAST_DUE'
+        ).length;
+        const canceledSubscribers = paidSubscribers.filter((subscriber) => subscriber.status === 'CANCELED').length;
+        const churnRate = paidSubscribers.length
+            ? Number(((canceledSubscribers / paidSubscribers.length) * 100).toFixed(1))
+            : 0;
+
+        const byPlan = subscribers.reduce(
+            (acc, subscriber) => {
+                acc[subscriber.plan as keyof typeof acc] += 1;
+                return acc;
+            },
+            { FREE: 0, BASIC: 0, PREMIUM: 0 }
+        );
+
+        return {
+            subscribers: subscribers.map(({ monthlyPaid, ...subscriber }) => subscriber),
+            stats: {
+                totalRevenue,
+                monthlyRevenue,
+                activeSubscribers,
+                churnRate,
+                byPlan,
+            },
+        };
+    }
+
     /**
      * Create a new user (admin only action)
      */
     async createUser(params: { email: string; password: string; role?: UserRole }) {
-        const existing = await this.prisma.user.findUnique({ where: { email: params.email } });
+        const email = normalizeEmail(params.email);
+        assertStrongPassword(params.password);
+
+        const existing = await this.prisma.user.findUnique({ where: { email } });
         if (existing) {
             throw new ConflictException({
                 code: 'EMAIL_ALREADY_EXISTS',
@@ -227,7 +307,7 @@ export class AdminService {
         const passwordHash = await bcrypt.hash(params.password, 10);
         const user = await this.prisma.user.create({
             data: {
-                email: params.email,
+                email,
                 passwordHash,
                 role: params.role || UserRole.viewer,
             },
@@ -256,8 +336,10 @@ export class AdminService {
             });
         }
 
-        if (email) {
-            const existing = await this.prisma.user.findUnique({ where: { email } });
+        let normalizedEmail = email ? normalizeEmail(email) : undefined;
+
+        if (normalizedEmail) {
+            const existing = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
             if (existing && existing.id !== userId) {
                 throw new ConflictException({
                     code: 'EMAIL_ALREADY_EXISTS',
@@ -267,9 +349,10 @@ export class AdminService {
         }
 
         const data: Record<string, unknown> = {};
-        if (email) data.email = email;
+        if (normalizedEmail) data.email = normalizedEmail;
         if (role) data.role = role;
         if (password) {
+            assertStrongPassword(password);
             data.passwordHash = await bcrypt.hash(password, 10);
         }
 
@@ -284,6 +367,13 @@ export class AdminService {
                 updatedAt: true,
             },
         });
+
+        if (password) {
+            await this.prisma.refreshToken.updateMany({
+                where: { userId, revoked: false },
+                data: { revoked: true },
+            });
+        }
 
         return user;
     }

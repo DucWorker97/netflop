@@ -58,6 +58,12 @@ export class AdminController {
         return result;
     }
 
+    @Get('subscriptions')
+    async getSubscriptions() {
+        const result = await this.adminService.getSubscriptionsOverview();
+        return { data: result };
+    }
+
     /**
      * User management
      */

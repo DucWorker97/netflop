@@ -20,7 +20,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { EventsService } from './events.service';
 import { TrackEventDto, TrackBatchEventsDto } from './dto/track-event.dto';
 
-@Controller('api/events')
+@Controller('events')
 export class EventsController {
     constructor(private readonly eventsService: EventsService) { }
 

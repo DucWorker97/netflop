@@ -2,30 +2,26 @@ import 'reflect-metadata';
 import helmet from 'helmet';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { SecurityConfig } from './config/security.config';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
+    const configService = app.get(ConfigService);
+    const security = configService.getOrThrow<SecurityConfig>('security');
+    app.getHttpAdapter().getInstance().disable('x-powered-by');
 
     // Global prefix for API routes (except health)
     app.setGlobalPrefix('api', {
         exclude: ['health'],
     });
 
-    // CORS configuration
-    // Note: Hardcoded origins because process.env is not yet loaded at bootstrap time
-    // To change origins, modify this array directly
-    const corsOrigins = [
-        'http://localhost:3001', // Admin panel
-        'http://localhost:3002', // Web viewer
-        'http://localhost:19006', // Expo dev (legacy)
-        'http://localhost:8081', // Expo dev
-    ];
     app.enableCors({
-        origin: corsOrigins,
-        credentials: true,
+        origin: security.cors.origins,
+        credentials: security.cors.credentials,
     });
 
     // Request ID middleware
@@ -49,7 +45,7 @@ async function bootstrap() {
     // Security Headers
     app.use(helmet());
 
-    const port = process.env.PORT || 3000;
+    const port = Number(configService.get<string>('PORT') || '3000');
     await app.listen(port, '0.0.0.0');
     console.log(`🚀 API running on http://localhost:${port}`);
     console.log(`📋 Health check: http://localhost:${port}/health`);

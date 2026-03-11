@@ -20,7 +20,7 @@ export default function RailsPage() {
     const createMutation = useCreateRail();
 
     const [draggingId, setDraggingId] = useState<string | null>(null);
-    const [localRails, setLocalRails] = useState<typeof rails>([]);
+    const [localRails, setLocalRails] = useState<NonNullable<typeof rails>>([]);
     const [showAddModal, setShowAddModal] = useState(false);
     const [newRail, setNewRail] = useState({ name: '', type: 'genre', genreId: '' });
 
@@ -119,7 +119,7 @@ export default function RailsPage() {
             <div style={{ background: 'var(--bg-card)', borderRadius: 8, overflow: 'hidden' }}>
                 {(localRails || []).length === 0 ? (
                     <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        No rails configured. Click "Seed Default Rails" or "Add Rail" to get started.
+                        No rails configured. Click &quot;Seed Default Rails&quot; or &quot;Add Rail&quot; to get started.
                     </div>
                 ) : (
                     (localRails || []).map((rail, index) => (

@@ -53,6 +53,7 @@ coverage
 # Agent state
 .agent/logs
 .agent/plans
+.dev-runtime
 
 # Python
 .venv
@@ -70,3 +71,8 @@ tmp-*.bin
 # Docker volumes (local)
 postgres-data
 minio-data
+
+# Android build artifacts
+apps/mobile/android/.gradle/
+apps/mobile/android/build/
+apps/mobile/android/app/build/

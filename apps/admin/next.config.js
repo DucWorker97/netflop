@@ -5,13 +5,6 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
-    // Temporarily ignore TS errors during build (React 19 + Next.js 15 types issue)
-    typescript: {
-        ignoreBuildErrors: true,
-    },
-    eslint: {
-        ignoreDuringBuilds: true,
-    },
     images: {
         remotePatterns: [
             {

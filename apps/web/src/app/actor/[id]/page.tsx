@@ -8,14 +8,13 @@ import { FeatureDisabled } from '@/components/FeatureDisabled';
 import { FEATURE_FLAGS } from '@/lib/feature-flags';
 
 export default function ActorPage() {
+    const params = useParams();
+    const actorId = params.id as string;
+    const { data: actor, isLoading, error } = useActor(actorId);
+
     if (!FEATURE_FLAGS.actor) {
         return <FeatureDisabled title="Actor profiles paused" message="Actor pages are temporarily disabled." />;
     }
-
-    const params = useParams();
-    const actorId = params.id as string;
-
-    const { data: actor, isLoading, error } = useActor(actorId);
 
     if (isLoading) {
         return (

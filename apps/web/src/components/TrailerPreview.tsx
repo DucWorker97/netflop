@@ -16,7 +16,7 @@ export function TrailerPreview({ movieId, posterUrl, trailerUrl, title, onPlay }
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     const videoRef = useRef<HTMLVideoElement>(null);
-    const hoverTimeoutRef = useRef<NodeJS.Timeout>();
+    const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         if (isHovering && trailerUrl) {
@@ -26,7 +26,9 @@ export function TrailerPreview({ movieId, posterUrl, trailerUrl, title, onPlay }
                 videoRef.current?.play();
             }, 500);
         } else {
-            clearTimeout(hoverTimeoutRef.current);
+            if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current);
+            }
             setIsPlaying(false);
             if (videoRef.current) {
                 videoRef.current.pause();
@@ -34,7 +36,11 @@ export function TrailerPreview({ movieId, posterUrl, trailerUrl, title, onPlay }
             }
         }
 
-        return () => clearTimeout(hoverTimeoutRef.current);
+        return () => {
+            if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current);
+            }
+        };
     }, [isHovering, trailerUrl]);
 
     return (

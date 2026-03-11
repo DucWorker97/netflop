@@ -5,6 +5,10 @@ import { useGenres, useMovies } from '@/lib/queries';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
+interface HealthResponse {
+    data?: Record<string, unknown>;
+}
+
 export default function StatusPage() {
     const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
@@ -16,16 +20,8 @@ export default function StatusPage() {
     const { data: health, isLoading: healthLoading, error: healthError } = useQuery({
         queryKey: ['health'],
         queryFn: async () => {
-            // Direct call to /health endpoint (bypassing the axios base URL if needed, but usually api instance handles it)
-            // Since api instance likely has /api base, we might need a separate fetch or assume health is at /health via proxy or API
-            // Let's assume api.get('/health') works relative to API base. 
-            // If API base is localhost:3000/api, then /health might need to be absolute or adjusted.
-            // Assuming Next.js rewrites /api -> localhost:3000/api. 
-            // Let's try to fetch from the known API URL directly if possible or relative if proxied.
-            // But for safety, let's use the standard fetch to the API port if we can, or just try relative.
-            // Actually, the api instance is best.
-            const res = await api.get('/health');
-            return res.data;
+            const res = await api.get<HealthResponse>('/health');
+            return res.data ?? {};
         },
         retry: 1
     });

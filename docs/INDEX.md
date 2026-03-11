@@ -1,43 +1,109 @@
 # Documentation Index
 
-> **netflop** - Netflix Mini cho Video Tự Sản Xuất  
-> 📚 Hướng dẫn đọc tài liệu theo đúng thứ tự
+> **Netflop** — Netflix Mini cho Video Tự Sản Xuất  
+> 📚 Organized documentation by topic
 
 ---
 
-## 🚀 Start Here (5 phút)
+## 🚀 Start Here
 
 | Bạn là... | Đọc file | Mục đích |
 |-----------|----------|----------|
-| **Mới vào team** | [README.md](../README.md) | Setup local, chạy `pnpm dev`, smoke test |
-| **PM / Reviewer** | [PRD.md](./PRD.md) | Scope, features, acceptance criteria |
-| **Developer** | [ARCHITECTURE.md](./ARCHITECTURE.md) | System design, luồng data, tech stack |
-| **Tester** | [feature_status.md](../feature_status.md) | Checklist tính năng, test status |
+| **Mới vào team** | [README.md](../README.md) | Setup local, chạy `pnpm dev` |
+| **PM / Reviewer** | [reference/PRD.md](reference/PRD.md) | Scope, features, acceptance |
+| **Developer** | [architecture/OVERVIEW.md](architecture/OVERVIEW.md) | System design, tech stack |
+| **Tester** | [features/STATUS.md](features/STATUS.md) | Feature checklist |
 
 ---
 
-## 📁 Document Structure
+## 📁 Documentation Structure
 
 ```
-netflop/
-├── README.md              # 🏠 Onboarding: quickstart, scripts, links
-├── OPENAPI.yaml           # 📋 API Reference (single source of truth)
-├── feature_status.md      # ✅ Feature tracking matrix
+docs/
+├── INDEX.md                          # 👈 You are here
 │
-├── docs/
-│   ├── INDEX.md           # 👈 You are here
-│   ├── PRD.md             # Product Requirements Document
-│   ├── ARCHITECTURE.md    # System architecture (C4-lite)
-│   ├── DATABASE_SCHEMA.md # ERD + Prisma schema docs
-│   ├── CI_GATES.md        # CI/CD gates & automation
-│   ├── DEPLOY_STAGING.md  # Deployment guide
-│   ├── OBSERVABILITY.md   # Logging, monitoring
-│   ├── AUDIT_MISMATCH.md  # Docs vs Code discrepancies
-│   └── INCOMPLETE_INFO.md # Known gaps & TODOs
+├── architecture/                     # System design
+│   ├── OVERVIEW.md                   # C4 architecture, NestJS modules, data flow
+│   ├── DATABASE.md                   # ERD, Prisma schema, enums, models
+│   ├── VIDEO_PIPELINE.md             # FFmpeg HLS encoding pipeline
+│   ├── UPLOAD_AND_PLAYBACK_FLOW.md   # End-to-end upload → playback
+│   └── PIPELINE_IDEMPOTENCY.md       # Encode idempotency audit
 │
-└── .agent/
-    └── workflows/         # How-to guides (verify, smoke, etc.)
+├── features/                         # Feature tracking
+│   ├── STATUS.md                     # Implementation matrix (MVP/SHOULD/COULD)
+│   ├── KNOWN_GAPS.md                 # Missing features, TODOs
+│   └── AUDIT_MISMATCH.md             # PRD vs Code discrepancies
+│
+├── testing/                          # QA & CI
+│   ├── CI_GATES.md                   # CI quality gates definition
+│   ├── QA_TEST_PLAN.md               # Functional test plan by module
+│   ├── QA_REGRESSION.md              # Regression checklist
+│   ├── QA_REPORT.md                  # Latest test report
+│   ├── DIAGNOSTIC_REPORT.md          # Playback/upload troubleshooting
+│   └── PATCH_PLAN.md                 # Quick-fix plans
+│
+├── deployment/                       # Infrastructure
+│   ├── DOCKER.md                     # Local Docker (Postgres, Redis, MinIO)
+│   └── STAGING.md                    # Staging deployment guide
+│
+├── security/                         # Security
+│   └── BOLA_AUDIT.md                 # OWASP API security audit
+│
+├── observability/                    # Logging & monitoring
+│   └── MONITORING.md                 # Request ID, JSON logs, Grafana
+│
+├── ai-service/                       # AI Curator
+│   └── README.md                     # Python FastAPI recommendation engine
+│
+├── mobile/                           # Mobile app
+│   └── README.md                     # Expo React Native app docs
+│
+├── design/                           # UI/UX design
+│   ├── UI_REFERENCE.md               # Admin upload UI reference (Lovable)
+│   └── LOVABLE_CONTEXT.md            # Context for AI redesign
+│
+└── reference/                        # Source of truth & handoffs
+    ├── PRD.md                        # Product Requirements Document
+    ├── HANDOFF.md                    # Latest technical handoff
+    ├── HANDOFF_CODEX.md              # Previous handoff (Codex)
+    └── UI_AUDIT.md                   # Web app UI/UX audit
 ```
+
+---
+
+## 🔗 Quick Links by Topic
+
+### Authentication & Security
+- PRD: [reference/PRD.md](reference/PRD.md)
+- Security Audit: [security/BOLA_AUDIT.md](security/BOLA_AUDIT.md)
+- API spec: [OPENAPI.yaml](../OPENAPI.yaml)
+- Code: `apps/api/src/auth/`
+
+### Video Upload & Encoding
+- Architecture: [architecture/VIDEO_PIPELINE.md](architecture/VIDEO_PIPELINE.md)
+- Flow: [architecture/UPLOAD_AND_PLAYBACK_FLOW.md](architecture/UPLOAD_AND_PLAYBACK_FLOW.md)
+- Idempotency: [architecture/PIPELINE_IDEMPOTENCY.md](architecture/PIPELINE_IDEMPOTENCY.md)
+- Code: `apps/worker/`
+
+### Database
+- Schema: [architecture/DATABASE.md](architecture/DATABASE.md)
+- Prisma: `apps/api/prisma/schema.prisma`
+
+### Mobile App
+- Docs: [mobile/README.md](mobile/README.md)
+- Code: `apps/mobile/`
+
+### Admin CMS
+- Code: `apps/admin/`
+- Design: [design/UI_REFERENCE.md](design/UI_REFERENCE.md)
+
+### AI Recommendations
+- Docs: [ai-service/README.md](ai-service/README.md)
+- Code: `apps/ai-curator/`
+
+### Infrastructure
+- Local: [deployment/DOCKER.md](deployment/DOCKER.md)
+- Staging: [deployment/STAGING.md](deployment/STAGING.md)
 
 ---
 
@@ -45,39 +111,10 @@ netflop/
 
 | Type | Documents | When to Use |
 |------|-----------|-------------|
-| **Tutorial** (learning) | `README.md` | First-time setup |
-| **How-to** (doing) | `.agent/workflows/*.md` | Run specific tasks |
-| **Reference** (information) | `OPENAPI.yaml`, `DATABASE_SCHEMA.md` | Look up specs |
-| **Explanation** (understanding) | `PRD.md`, `ARCHITECTURE.md` | Understand why |
-
----
-
-## 🔗 Quick Links by Topic
-
-### Authentication & Authorization
-- PRD: [Section 2.2 - User Stories](./PRD.md#22-user-stories-mvp) (US-01, US-10)
-- API: [`OPENAPI.yaml#/paths/~1auth`](../OPENAPI.yaml) - Auth endpoints
-- Code: `apps/api/src/auth/`
-
-### Video Upload & Encoding
-- PRD: [Section 3.1 - Pipeline](./PRD.md#pipeline-hls-encode)
-- Architecture: [Section 3 - E2E Flows](./ARCHITECTURE.md#3-luồng-nghiệp-vụ-end-to-end)
-- Worker: `apps/worker/`
-- Workflow: [video-pipeline-smoke.md](../.agent/workflows/video-pipeline-smoke.md)
-
-### Mobile App (Viewer)
-- PRD: [Section 5.1 - Mobile Screens](./PRD.md#51-mobile-screens)
-- Code: `apps/mobile/`
-- API Calls: See React Query hooks in `apps/mobile/src/hooks/`
-
-### Admin CMS
-- PRD: [Section 5.2 - Admin Screens](./PRD.md#52-admin-screens)
-- Code: `apps/admin/`
-- API: Admin endpoints in `OPENAPI.yaml` (tag: Admin)
-
-### Database
-- Schema: [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)
-- Prisma: `apps/api/prisma/schema.prisma`
+| **Tutorial** | `README.md` | First-time setup |
+| **How-to** | `testing/`, `deployment/` | Run specific tasks |
+| **Reference** | `OPENAPI.yaml`, `architecture/DATABASE.md` | Look up specs |
+| **Explanation** | `reference/PRD.md`, `architecture/OVERVIEW.md` | Understand why |
 - Migrations: `apps/api/prisma/migrations/`
 
 ---

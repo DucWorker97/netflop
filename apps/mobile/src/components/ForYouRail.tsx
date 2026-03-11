@@ -13,26 +13,27 @@ import {
     ActivityIndicator,
     StyleSheet,
 } from 'react-native';
-import { useRecommendations } from '../hooks/queries';
+import { useRouter } from 'expo-router';
+import { useRecommendations, type RecommendationMovie } from '../hooks/queries';
+import { useAnalytics } from '../lib/analytics';
 
 export function ForYouRail() {
     const router = useRouter();
     const { trackImpression } = useAnalytics();
-
     const { data, isLoading, error } = useRecommendations(10);
 
-    const handleMoviePress = (movie: any) => {
+    const handleMoviePress = (movie: RecommendationMovie) => {
         router.push(`/movie/${movie.id}`);
     };
 
-    const handleMovieVisible = (movie: any, index: number) => {
+    const handleMovieVisible = (movie: RecommendationMovie, index: number) => {
         trackImpression(movie.id, 'For You', index);
     };
 
     if (isLoading) {
         return (
             <View style={styles.container}>
-                <Text style={styles.title}>🎯 For You</Text>
+                <Text style={styles.title}>For You</Text>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator color="#3b82f6" size="small" />
                 </View>
@@ -41,7 +42,7 @@ export function ForYouRail() {
     }
 
     if (error || !data?.recommendations?.length) {
-        return null; // Hide rail if no recommendations
+        return null;
     }
 
     const items = data.recommendations;
@@ -50,7 +51,7 @@ export function ForYouRail() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>🎯 For You</Text>
+                <Text style={styles.title}>For You</Text>
                 {isAi && (
                     <View style={styles.aiBadge}>
                         <Text style={styles.aiBadgeText}>AI</Text>

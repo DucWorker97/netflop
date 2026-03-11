@@ -5,7 +5,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-// Mock downloads data (in real app, this would come from local storage/SQLite)
+// Downloads are stored locally on device (not yet implemented)
 interface DownloadedMovie {
     id: string;
     title: string;
@@ -17,32 +17,9 @@ interface DownloadedMovie {
     progress: number; // 0-100, 100 = complete
 }
 
-const mockDownloads: DownloadedMovie[] = [
-    {
-        id: '1',
-        title: 'The Dark Knight',
-        posterUrl: null,
-        durationSeconds: 9120,
-        downloadedAt: new Date().toISOString(),
-        sizeBytes: 1500000000,
-        quality: '720p',
-        progress: 100,
-    },
-    {
-        id: '2',
-        title: 'Inception',
-        posterUrl: null,
-        durationSeconds: 8880,
-        downloadedAt: new Date(Date.now() - 86400000).toISOString(),
-        sizeBytes: 1200000000,
-        quality: '480p',
-        progress: 65,
-    },
-];
-
 export default function DownloadsScreen() {
     const router = useRouter();
-    const [downloads, setDownloads] = useState<DownloadedMovie[]>(mockDownloads);
+    const [downloads, setDownloads] = useState<DownloadedMovie[]>([]);
     const [editMode, setEditMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 

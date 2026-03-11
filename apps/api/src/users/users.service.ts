@@ -1,7 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { User, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { assertStrongPassword, normalizeEmail } from '../common/utils/security';
 
 interface CreateUserData {
     email: string;
@@ -18,13 +19,13 @@ export class UsersService {
     }
 
     async findByEmail(email: string): Promise<User | null> {
-        return this.prisma.user.findUnique({ where: { email } });
+        return this.prisma.user.findUnique({ where: { email: normalizeEmail(email) } });
     }
 
     async create(data: CreateUserData): Promise<User> {
         return this.prisma.user.create({
             data: {
-                email: data.email,
+                email: normalizeEmail(data.email),
                 passwordHash: data.passwordHash,
                 role: data.role || UserRole.viewer,
             },
@@ -49,18 +50,19 @@ export class UsersService {
             });
         }
 
-        if (newPassword.length < 6) {
-            throw new BadRequestException({
-                code: 'PASSWORD_TOO_SHORT',
-                message: 'New password must be at least 6 characters',
-            });
-        }
+        assertStrongPassword(newPassword);
 
         const newHash = await bcrypt.hash(newPassword, 10);
-        await this.prisma.user.update({
-            where: { id: userId },
-            data: { passwordHash: newHash },
-        });
+        await this.prisma.$transaction([
+            this.prisma.user.update({
+                where: { id: userId },
+                data: { passwordHash: newHash },
+            }),
+            this.prisma.refreshToken.updateMany({
+                where: { userId, revoked: false },
+                data: { revoked: true },
+            }),
+        ]);
     }
 
     async getProfile(userId: string) {
@@ -70,6 +72,7 @@ export class UsersService {
                 id: true,
                 email: true,
                 role: true,
+                isActive: true,
                 createdAt: true,
                 _count: {
                     select: {
@@ -92,6 +95,7 @@ export class UsersService {
             id: user.id,
             email: user.email,
             role: user.role,
+            isActive: user.isActive,
             createdAt: user.createdAt.toISOString(),
             stats: {
                 favorites: user._count.favorites,
@@ -99,5 +103,56 @@ export class UsersService {
                 ratings: user._count.ratings,
             }
         };
+    }
+
+    /**
+     * Disable a user account (admin action)
+     */
+    async disableUser(userId: string, reason?: string): Promise<void> {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            throw new NotFoundException({
+                code: 'USER_NOT_FOUND',
+                message: 'User not found',
+            });
+        }
+
+        await this.prisma.$transaction([
+            this.prisma.user.update({
+                where: { id: userId },
+                data: {
+                    isActive: false,
+                    disabledAt: new Date(),
+                    disabledReason: reason || null,
+                },
+            }),
+            // Revoke all active refresh tokens
+            this.prisma.refreshToken.updateMany({
+                where: { userId, revoked: false },
+                data: { revoked: true },
+            }),
+        ]);
+    }
+
+    /**
+     * Re-enable a disabled user account (admin action)
+     */
+    async enableUser(userId: string): Promise<void> {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            throw new NotFoundException({
+                code: 'USER_NOT_FOUND',
+                message: 'User not found',
+            });
+        }
+
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                isActive: true,
+                disabledAt: null,
+                disabledReason: null,
+            },
+        });
     }
 }

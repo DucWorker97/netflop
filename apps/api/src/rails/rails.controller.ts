@@ -15,7 +15,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RailsService } from './rails.service';
 
-@Controller('api/rails')
+@Controller('rails')
 export class RailsController {
     constructor(private readonly railsService: RailsService) { }
 

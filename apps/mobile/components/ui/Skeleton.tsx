@@ -17,8 +17,6 @@ interface SkeletonProps {
     borderRadius?: number;
 }
 
-const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient);
-
 export function Skeleton({ width = '100%', height = 20, style, borderRadius = 4 }: SkeletonProps) {
     const opacity = useSharedValue(0.3);
 
@@ -40,12 +38,14 @@ export function Skeleton({ width = '100%', height = 20, style, borderRadius = 4 
 
     return (
         <View style={[styles.container, { width, height, borderRadius }, style]}>
-            <AnimatedGradient
-                colors={['#333', '#444', '#333']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[StyleSheet.absoluteFill, animatedStyle]}
-            />
+            <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
+                <LinearGradient
+                    colors={['#333', '#444', '#333']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={StyleSheet.absoluteFill}
+                />
+            </Animated.View>
         </View>
     );
 }

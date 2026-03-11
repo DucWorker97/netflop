@@ -275,8 +275,8 @@ export default function MediaCenterPage() {
                                         <div className="max-w-md mx-auto bg-base-200 p-4 rounded-lg mt-4 text-left font-mono text-sm max-h-32 overflow-y-auto">
                                             <p className="text-success">&gt; Upload complete</p>
                                             <p className="text-warning animate-pulse">&gt; Transcoding to HLS (360p, 480p, 720p)...</p>
-                                            <p className="text-muted-foreground mt-2">// This process happens on the worker server.</p>
-                                            <p className="text-muted-foreground">// You can safely leave this page now.</p>
+                                            <p className="text-muted-foreground mt-2">This process runs on the worker server.</p>
+                                            <p className="text-muted-foreground">You can safely leave this page now.</p>
                                         </div>
                                     </div>
                                 ) : (

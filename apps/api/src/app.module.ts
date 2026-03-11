@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { HealthController } from './health/health.controller';
-import { PrismaModule } from './prisma/prisma.module'
+import { PrismaModule } from './prisma/prisma.module';
 import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -25,51 +26,34 @@ import { AccountModule } from './account/account.module';
 import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module';
-
-import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard } from '@nestjs/throttler';
-
-// ─────────────────────────────────────────────────────────────
-// Load and expand .env BEFORE NestJS module initialization
-// This enables variable expansion like ${DEV_PUBLIC_HOST}
-// ─────────────────────────────────────────────────────────────
-import * as dotenv from 'dotenv';
-import * as dotenvExpand from 'dotenv-expand';
-import * as path from 'path';
-
-const envPath = path.resolve(__dirname, '../../../.env');
-const env = dotenv.config({ path: envPath });
-dotenvExpand.expand(env);
-
-// Log expanded S3_PUBLIC_BASE_URL for debugging (mask sensitive parts)
-console.log(`[env] Loaded from: ${envPath}`);
-console.log(`[env] DEV_PUBLIC_HOST=${process.env.DEV_PUBLIC_HOST}`);
-console.log(`[env] S3_PUBLIC_BASE_URL=${process.env.S3_PUBLIC_BASE_URL}`);
-console.log(`[env] EXPO_PUBLIC_API_BASE_URL=${process.env.EXPO_PUBLIC_API_BASE_URL}`);
+import securityConfig from './config/security.config';
+import { validateEnvironment } from './config/env.validation';
 
 @Module({
     imports: [
-
         ConfigModule.forRoot({
             isGlobal: true,
+            cache: true,
+            expandVariables: true,
             envFilePath: ['../../.env', '.env'],
+            load: [securityConfig],
+            validate: validateEnvironment,
         }),
-        // Rate limiting - default global config
         ThrottlerModule.forRoot([
             {
                 name: 'short',
-                ttl: 1000, // 1 second
-                limit: 20, // 20 requests per second
+                ttl: 1000,
+                limit: 20,
             },
             {
                 name: 'medium',
-                ttl: 10000, // 10 seconds
-                limit: 100, // 100 requests per 10 seconds
+                ttl: 10000,
+                limit: 100,
             },
             {
                 name: 'long',
-                ttl: 60000, // 1 minute
-                limit: 300, // 300 requests per minute
+                ttl: 60000,
+                limit: 300,
             },
         ]),
         BullModule.forRoot({
@@ -109,4 +93,4 @@ console.log(`[env] EXPO_PUBLIC_API_BASE_URL=${process.env.EXPO_PUBLIC_API_BASE_U
         },
     ],
 })
-export class AppModule { }
+export class AppModule {}
