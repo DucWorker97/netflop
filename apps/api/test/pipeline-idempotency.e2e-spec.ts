@@ -90,8 +90,8 @@ describe('Pipeline Idempotency (e2e)', () => {
                 .expect(201);
 
             // Verify status
-            expect(response.body.encodeStatus).toBe('pending');
-            expect(response.body.status).toBe('queued');
+            expect(response.body.data.encodeStatus).toBe('pending');
+            expect(response.body.data.status).toBe('queued');
 
             // Verify DB records
             const upload = await prisma.upload.findUnique({ where: { objectKey } });
@@ -131,8 +131,8 @@ describe('Pipeline Idempotency (e2e)', () => {
                 .expect(201); // 201 Created is default for POST, but logic returns success
 
             // Verify response indicates idempotency
-            expect(response.body.status).toBe('already_queued');
-            expect(response.body.encodeStatus).toBe('pending');
+            expect(response.body.data.status).toBe('already_queued');
+            expect(response.body.data.encodeStatus).toBe('pending');
 
             // Verify DB counts (Constraints verify this too, but logic should prevent collision)
             const jobCount = await prisma.encodeJob.count({ where: { movieId } });
@@ -158,7 +158,7 @@ describe('Pipeline Idempotency (e2e)', () => {
                 })
                 .expect(201);
 
-            expect(response.body.status).toBe('retry_queued');
+            expect(response.body.data.status).toBe('retry_queued');
 
             // Verify DB update
             const job = await prisma.encodeJob.findUnique({ where: { inputKey: objectKey } });
@@ -187,7 +187,7 @@ describe('Pipeline Idempotency (e2e)', () => {
                 })
                 .expect(201);
 
-            expect(response.body.status).toBe('already_completed');
+            expect(response.body.data.status).toBe('already_completed');
 
             // Verify NO re-enqueue
             expect(mockEncodeQueue.add).not.toHaveBeenCalled();

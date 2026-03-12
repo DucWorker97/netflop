@@ -20,6 +20,8 @@ export default function HistoryPage() {
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const { data: history, isLoading, refetch } = useWatchHistory();
     const [clearing, setClearing] = useState(false);
+    const [removingMovieId, setRemovingMovieId] = useState<string | null>(null);
+    const [actionError, setActionError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {
@@ -30,17 +32,32 @@ export default function HistoryPage() {
     const handleClearHistory = async () => {
         if (!confirm('Are you sure you want to clear your entire watch history?')) return;
 
+        setActionError(null);
         setClearing(true);
         try {
-            // In a real app, this would be an API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // Mock clearing for now since API might not support bulk delete yet
-            alert('History cleared (mock)');
+            await api.delete<{ data: { deleted: number } }>('/api/history');
             refetch();
         } catch (error) {
             console.error('Failed to clear history:', error);
+            setActionError('Failed to clear history. Please try again.');
         } finally {
             setClearing(false);
+        }
+    };
+
+    const handleRemoveHistoryItem = async (movieId: string) => {
+        if (!confirm('Remove from history?')) return;
+
+        setActionError(null);
+        setRemovingMovieId(movieId);
+        try {
+            await api.delete<{ data: { deleted: number } }>(`/api/history/${movieId}`);
+            refetch();
+        } catch (error) {
+            console.error('Failed to remove history item:', error);
+            setActionError('Failed to remove history item. Please try again.');
+        } finally {
+            setRemovingMovieId(null);
         }
     };
 
@@ -68,6 +85,9 @@ export default function HistoryPage() {
                         </button>
                     )}
                 </div>
+                {actionError && (
+                    <p style={{ color: '#ff6b6b', marginBottom: '1rem' }}>{actionError}</p>
+                )}
 
                 {isLoading ? (
                     <div className="loading-spinner"><div className="spinner" /></div>
@@ -135,19 +155,16 @@ export default function HistoryPage() {
                                 <button
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        if (confirm('Remove from history?')) {
-                                            // Mock remove
-                                            alert('Removed (mock)');
-                                            refetch();
-                                        }
+                                        handleRemoveHistoryItem(item.movie.id);
                                     }}
+                                    disabled={removingMovieId === item.movie.id}
                                     style={{
                                         position: 'absolute',
                                         top: '1rem',
                                         right: '1rem',
                                         background: 'none',
                                         border: 'none',
-                                        color: '#666',
+                                        color: removingMovieId === item.movie.id ? '#999' : '#666',
                                         cursor: 'pointer',
                                         fontSize: '1.25rem',
                                         padding: '0.25rem'

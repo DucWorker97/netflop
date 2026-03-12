@@ -1,5 +1,5 @@
 
-import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service'; // Kept as it's used
@@ -8,12 +8,7 @@ import { S3Client, GetObjectCommand, ListObjectsV2Command, DeleteObjectsCommand 
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
-import { ListMoviesDto } from './dto/list-movies.dto';
-
-interface PaginatedResult<T> {
-    data: T[];
-    total: number;
-}
+import { ListMoviesDto, MovieSortField, SortOrder } from './dto/list-movies.dto';
 
 
 
@@ -101,18 +96,98 @@ export class MoviesService {
         });
     }
 
-    async findAll(query: ListMoviesDto, user?: any) {
-        const { page = 1, limit = 20, q: search } = query;
+    async findAll(query: ListMoviesDto, user?: User) {
+        const {
+            page = 1,
+            limit = 20,
+            q: search,
+            genreId,
+            sort = MovieSortField.createdAt,
+            order = SortOrder.desc,
+            status,
+            yearFrom,
+            yearTo,
+            minRating,
+            language,
+        } = query;
         const skip = (page - 1) * limit;
-        const where: any = {};
-        if (search) where.title = { contains: search, mode: 'insensitive' };
+        const where: Prisma.MovieWhereInput = {};
+
+        if (yearFrom !== undefined && yearTo !== undefined && yearFrom > yearTo) {
+            throw new BadRequestException({
+                code: 'INVALID_YEAR_RANGE',
+                message: 'yearFrom cannot be greater than yearTo',
+            });
+        }
+
+        if (search) {
+            where.title = { contains: search, mode: 'insensitive' };
+        }
+
+        if (genreId) {
+            where.genres = {
+                some: {
+                    genreId,
+                },
+            };
+        }
+
+        if (yearFrom !== undefined || yearTo !== undefined) {
+            where.releaseYear = {
+                gte: yearFrom,
+                lte: yearTo,
+            };
+        }
+
+        if (minRating !== undefined) {
+            where.voteAverage = {
+                gte: minRating,
+            };
+        }
+
+        if (language) {
+            where.originalLanguage = {
+                equals: language.trim(),
+                mode: 'insensitive',
+            };
+        }
+
+        const isAdmin = user?.role === 'admin';
+        if (isAdmin) {
+            if (status) {
+                where.movieStatus = status;
+            }
+        } else {
+            where.movieStatus = MovieStatus.published;
+            where.encodeStatus = EncodeStatus.ready;
+        }
+
+        let orderBy: Prisma.MovieOrderByWithRelationInput = { createdAt: 'desc' };
+        switch (sort) {
+            case MovieSortField.title:
+                orderBy = { title: order };
+                break;
+            case MovieSortField.releaseYear:
+                orderBy = { releaseYear: order };
+                break;
+            case MovieSortField.voteAverage:
+                orderBy = { voteAverage: order };
+                break;
+            case MovieSortField.popularity:
+                orderBy = { popularity: order };
+                break;
+            case MovieSortField.createdAt:
+            default:
+                orderBy = { createdAt: order };
+                break;
+        }
 
         const [movies, total] = await Promise.all([
             this.prisma.movie.findMany({
                 where,
                 take: limit,
                 skip,
-                orderBy: { createdAt: 'desc' },
+                orderBy,
                 include: {
                     genres: { include: { genre: true } },
                     actors: { include: { actor: true } },
@@ -124,7 +199,7 @@ export class MoviesService {
         return { data: movies.map((m) => this.formatMovie(m)), total };
     }
 
-    async findById(id: string, user?: any) {
+    async findById(id: string, _user?: User) {
         const movie = await this.prisma.movie.findUnique({
             where: { id },
             include: {

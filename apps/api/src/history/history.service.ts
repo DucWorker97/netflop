@@ -165,6 +165,28 @@ export class HistoryService {
         }));
     }
 
+    async clearHistory(userId: string, profileId?: string) {
+        const where = profileId ? { profileId } : { userId };
+        const result = await this.prisma.watchHistory.deleteMany({ where });
+        return { deleted: result.count };
+    }
+
+    async removeHistoryItem(userId: string, movieId: string, profileId?: string) {
+        const where = profileId
+            ? { profileId, movieId }
+            : { userId, movieId };
+
+        const result = await this.prisma.watchHistory.deleteMany({ where });
+        if (result.count === 0) {
+            throw new NotFoundException({
+                code: 'HISTORY_ITEM_NOT_FOUND',
+                message: 'History item not found',
+            });
+        }
+
+        return { deleted: result.count };
+    }
+
     async getMovieProgress(userId: string, movieId: string, profileId?: string) {
         const whereClause = profileId
             ? { profileId, movieId }

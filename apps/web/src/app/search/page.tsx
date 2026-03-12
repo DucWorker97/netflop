@@ -50,6 +50,16 @@ export default function AdvancedSearchPage() {
             if (filters.yearFrom) params.set('yearFrom', filters.yearFrom);
             if (filters.yearTo) params.set('yearTo', filters.yearTo);
             if (filters.minRating) params.set('minRating', filters.minRating);
+            if (filters.sortBy === 'newest') {
+                params.set('sort', 'releaseYear');
+                params.set('order', 'desc');
+            } else if (filters.sortBy === 'oldest') {
+                params.set('sort', 'releaseYear');
+                params.set('order', 'asc');
+            } else if (filters.sortBy === 'rating') {
+                params.set('sort', 'voteAverage');
+                params.set('order', 'desc');
+            }
             params.set('limit', '24');
 
             const result = await api.get<{ data: Movie[]; meta: { total: number } }>(
@@ -101,6 +111,16 @@ export default function AdvancedSearchPage() {
             minRating: '',
             sortBy: 'relevance',
         });
+    };
+
+    const setQuickGenre = (genreKey: string) => {
+        const genre = genres?.find((item) => {
+            const normalized = genreKey.toLowerCase();
+            return item.slug.toLowerCase() === normalized || item.name.toLowerCase() === normalized;
+        });
+
+        if (!genre) return;
+        setFilters((prev) => ({ ...prev, genreId: genre.id }));
     };
 
     const formatDuration = (seconds: number) => {
@@ -314,10 +334,10 @@ export default function AdvancedSearchPage() {
                         <h2>Discover Movies</h2>
                         <p>Search by title or use filters to explore</p>
                         <div className={styles.quickFilters}>
-                            <button onClick={() => setFilters({ ...filters, genreId: 'action' })}>
+                            <button onClick={() => setQuickGenre('action')}>
                                 🎬 Action
                             </button>
-                            <button onClick={() => setFilters({ ...filters, genreId: 'comedy' })}>
+                            <button onClick={() => setQuickGenre('comedy')}>
                                 😂 Comedy
                             </button>
                             <button onClick={() => setFilters({ ...filters, minRating: '8' })}>

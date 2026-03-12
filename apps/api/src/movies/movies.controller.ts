@@ -21,7 +21,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { PolicyGuard } from '../common/guards/policy.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { MovieReadPolicy, MovieVisiblePolicy } from '../common/decorators/check-policy.decorator';
+import { MovieReadPolicy } from '../common/decorators/check-policy.decorator';
 import { User } from '@prisma/client';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';

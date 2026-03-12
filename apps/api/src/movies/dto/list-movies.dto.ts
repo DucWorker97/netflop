@@ -1,5 +1,19 @@
-import { IsOptional, IsInt, IsString, IsEnum, IsUUID, Min, Max } from 'class-validator';
+import { IsOptional, IsInt, IsString, IsEnum, IsUUID, Min, Max, IsNumber, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
+import { MovieStatus } from '@prisma/client';
+
+export enum MovieSortField {
+    createdAt = 'createdAt',
+    title = 'title',
+    releaseYear = 'releaseYear',
+    voteAverage = 'voteAverage',
+    popularity = 'popularity',
+}
+
+export enum SortOrder {
+    asc = 'asc',
+    desc = 'desc',
+}
 
 export class ListMoviesDto {
     @IsOptional()
@@ -24,15 +38,38 @@ export class ListMoviesDto {
     q?: string;
 
     @IsOptional()
-    @IsEnum(['createdAt', 'title', 'releaseYear'])
-    sort?: 'createdAt' | 'title' | 'releaseYear' = 'createdAt';
+    @IsEnum(MovieSortField)
+    sort?: MovieSortField = MovieSortField.createdAt;
 
     @IsOptional()
-    @IsEnum(['asc', 'desc'])
-    order?: 'asc' | 'desc' = 'desc';
+    @IsEnum(SortOrder)
+    order?: SortOrder = SortOrder.desc;
 
-    // Status filter - used by frontend but service auto-filters based on user role
+    @IsOptional()
+    @IsEnum(MovieStatus)
+    status?: MovieStatus;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(1900)
+    yearFrom?: number;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(1900)
+    yearTo?: number;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber()
+    @Min(0)
+    @Max(10)
+    minRating?: number;
+
     @IsOptional()
     @IsString()
-    status?: string;
+    @MaxLength(10)
+    language?: string;
 }

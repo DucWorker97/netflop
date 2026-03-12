@@ -2,6 +2,7 @@ import {
     Controller,
     Get,
     Post,
+    Delete,
     Body,
     Param,
     Query,
@@ -32,6 +33,25 @@ export class HistoryController {
         const isContinueWatching = continueWatching === 'true';
         const data = await this.historyService.findAll(user.id, isContinueWatching, profileId);
         return { data };
+    }
+
+    @Delete()
+    async clearHistory(
+        @CurrentUser() user: User,
+        @Headers('x-profile-id') profileId?: string,
+    ) {
+        const result = await this.historyService.clearHistory(user.id, profileId);
+        return { data: result };
+    }
+
+    @Delete(':movieId')
+    async removeHistoryItem(
+        @CurrentUser() user: User,
+        @Headers('x-profile-id') profileId?: string,
+        @Param('movieId', ParseUUIDPipe) movieId?: string,
+    ) {
+        const result = await this.historyService.removeHistoryItem(user.id, movieId!, profileId);
+        return { data: result };
     }
 
     @Get(':movieId')

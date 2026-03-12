@@ -28,8 +28,14 @@ export default function Top10Page() {
 
     useEffect(() => {
         async function fetchTop10() {
+            setLoading(true);
             try {
-                const res = await api.get<MoviesResponse>('/api/movies?status=published&limit=10&sort=popularity');
+                const periodParams = period === 'week'
+                    ? 'sort=popularity&order=desc'
+                    : period === 'month'
+                    ? 'sort=voteAverage&order=desc'
+                    : 'sort=releaseYear&order=desc';
+                const res = await api.get<MoviesResponse>(`/api/movies?status=published&limit=10&${periodParams}`);
                 setMovies(res.data || []);
             } catch {
                 setMovies([]);
@@ -38,7 +44,7 @@ export default function Top10Page() {
             }
         }
         fetchTop10();
-    }, []);
+    }, [period]);
 
     if (!FEATURE_FLAGS.top10) {
         return <FeatureDisabled title="Top 10 is paused" message="We are focusing on core upload and streaming features." />;
